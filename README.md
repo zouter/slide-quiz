@@ -328,7 +328,33 @@ For a two-axis question, set `data-quiz-type="plane"` and name the four axis end
 </section>
 ```
 
-Plane questions need the serverless functions from this fork, which accept the `plane` type. Size the plane on slides with `--sq-plane-size` and its dots with `--sq-plane-point`.
+Plane and rank questions need the serverless functions from this fork, which accept those types. Size the plane on slides with `--sq-plane-size` and its dots with `--sq-plane-point`.
+
+#### Rank questions (this fork)
+
+Set `data-quiz-type="rank"`: each person puts every option in order, starting from a random order on their phone. The first place earns n − 1 points and the last none; results bars show each option's share of the highest possible score.
+
+#### Keeping a question open (this fork)
+
+A question is answerable while its question or results slide is shown. Mark any other slide with `data-quiz-open="<quizId>"` to keep that question open there too, for example on the slides between a question and its results.
+
+#### Audience groups (this fork)
+
+Add `groups` to the config to ask one question, before the others, whose answer puts each respondent in a group. Results bars are then split by group and plane dots coloured by group, each in its group's colour, with a legend. The group question has no slide of its own: keep it open with `data-quiz-open` on the opening slides, and put a join QR code on them with an element marked `data-quiz-join` (its value is the QR size in pixels).
+
+```js
+slideQuiz: {
+  wsUrl, quizGroupId, quizUrl,
+  groups: {
+    quizId: "who",
+    question: "Who are you?",
+    options: [
+      { label: "phd", text: "PhD student", color: "#f16b27" },
+      { label: "pi", text: "PI", color: "#703a91" },
+    ],
+  },
+}
+```
 
 `data-quiz-type` defaults to `"choice"` when omitted, so existing slides work without changes. An option marked `"correct": true` is highlighted on the next fragment step of the results slide, so the answer stays hidden while people vote. `data-quiz-hint` adds a hint under a free-text or multi-select question, on the slide and on the phones.
 

@@ -4,6 +4,13 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.2 (zouter fork)
+
+- Rank questions (`data-quiz-type="rank"`): order every option; results show each option's share of the highest possible score.
+- `data-quiz-open` keeps a question answerable on other slides.
+- Audience groups (`groups` config): results split and coloured by group, with a legend.
+- `data-quiz-join` puts the join QR code on any slide.
+
 ## 0.7.2-plane.1 (zouter fork)
 
 - Plane questions (`data-quiz-type="plane"`): each person places one point on two labelled axes; results show every point. The serverless functions accept the new type.

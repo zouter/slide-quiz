@@ -39,6 +39,8 @@ import {
   MultiAnswerSchema,
   PlaneAnswerSchema,
   encodePlaneAnswer,
+  RankAnswerSchema,
+  rankPoints,
   resultsStream,
   syncStream,
 } from "./quiz-types";
@@ -55,6 +57,7 @@ import type {
   QuizError,
   QuizErrorHandler,
   ConnectionStatus,
+  GroupCounts,
 } from "./quiz-types";
 
 // ── Dev-only validation flag ──
@@ -445,6 +448,8 @@ export class PresenterQuizManager extends QuizManager {
   // Saved with the results, so a presenter refresh keeps it; the raw answer
   // lets setQuestions() recount answers that arrived before their question.
   private sessionVotes = new Map<string, Map<string, SessionVote>>();
+  // The question whose answer puts each respondent in an audience group
+  private groupQuizId: string | null = null;
 
   constructor(config: QuizManagerConfig) {
     super(config, 0); // No history — presenter is source of truth
@@ -483,6 +488,28 @@ export class PresenterQuizManager extends QuizManager {
     for (const quizId of this.sessionVotes.keys()) this.recount(quizId);
     // Phones need the new question list (and, after a reload, the restored question)
     this.sendSync();
+  }
+
+  /** Name the question whose answer puts each respondent in an audience group. */
+  setGroupQuiz(quizId: string | null): void {
+    this.groupQuizId = quizId;
+  }
+
+  /**
+   * One quiz's counted keys split by audience group: key → group label → count.
+   * A respondent without a group answer counts under "".
+   */
+  getGroupBreakdown(quizId: string): Record<string, GroupCounts> {
+    const groupVotes = this.groupQuizId ? this.sessionVotes.get(this.groupQuizId) : undefined;
+    const breakdown: Record<string, GroupCounts> = {};
+    for (const [sessionId, vote] of this.sessionVotes.get(quizId) ?? []) {
+      const group = groupVotes?.get(sessionId)?.keys[0] ?? "";
+      for (const key of vote.keys) {
+        const counts = (breakdown[key] ??= {});
+        counts[group] = (counts[group] || 0) + 1;
+      }
+    }
+    return breakdown;
   }
 
   /** Set the active question (called when slide enters viewport) */
@@ -529,6 +556,16 @@ export class PresenterQuizManager extends QuizManager {
     switch (question?.type ?? "choice") {
       case "text":
         return [answer.trim().toLowerCase()];
+      case "rank": {
+        // Every option exactly once; position i of n earns n - 1 - i points,
+        // counted as that many keys, so the vote map holds points per option.
+        const labels = question!.options.map((o) => o.label);
+        const parsed = v.safeParse(RankAnswerSchema, answer);
+        if (!parsed.success) return null;
+        const order = parsed.output;
+        if (order.length !== labels.length || !order.every((label) => labels.includes(label))) return null;
+        return order.flatMap((label, i) => Array(rankPoints(i, order.length)).fill(label));
+      }
       case "plane": {
         // Re-snap, so every point lands on the grid and the vote map stays bounded.
         const parsed = v.safeParse(PlaneAnswerSchema, answer);

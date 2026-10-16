@@ -469,10 +469,64 @@
   border: 2px solid var(--sq-plane-point-ring, #fff);
   border-radius: 50%;
   background: color-mix(in srgb, var(--sq-accent) 70%, transparent);
-  transform: translate(-50%, -50%);
+  transform: translate(calc(-50% + var(--sq-plane-offset, 0) * 70%), -50%);
   transition: opacity 0.5s ease, width 0.4s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .sq-plane__point { transition: none; }
+}
+
+/* ── Audience groups ── */
+
+.sq-groups-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 1.2rem;
+  font-family: var(--sq-font);
+  font-size: clamp(0.75rem, 1.4vw, 0.95rem);
+  color: var(--sq-text);
+}
+
+.sq-groups-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.sq-groups-legend__item i {
+  width: 0.85em;
+  height: 0.85em;
+  border-radius: 0.2em;
+}
+
+/* A bar split by audience group: one segment per group, in its colour. */
+.sq-result-bar__fill:has(.sq-result-bar__segment) {
+  display: flex;
+  overflow: hidden;
+  background: none;
+}
+
+.sq-result-bar__segment {
+  flex-basis: 0;
+  min-width: 0;
+  height: 100%;
+  background: var(--sq-bar-fill);
+}
+
+/* ── Join QR code on any slide ── */
+
+.sq-join {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sq-join__url {
+  margin: 0;
+  font-family: var(--sq-mono);
+  font-size: clamp(0.5rem, 0.9vw, 0.7rem);
+  color: var(--sq-text-muted);
 }

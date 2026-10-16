@@ -7,7 +7,8 @@
 import * as v from "valibot";
 import type { QuestionPayload, PresenterQuizManager, QuizErrorHandler } from "./quiz-manager";
 import { getQuizPresenter, removeQuizPresenter } from "./quiz-manager";
-import { QuizEndpointsSchema, JsonQuizOptionsSchema, QuizTypeSchema } from "./quiz-types";
+import { QuizEndpointsSchema, JsonQuizOptionsSchema, QuizTypeSchema, GroupsConfigSchema } from "./quiz-types";
+import { renderQR, displayUrl } from "./dom/render-qr";
 import { animateCount } from "./dom/animate";
 import { renderQuestion, questionHint } from "./dom/render-question";
 import { renderResults, updateResultBars, animateResultBars, syncCorrectReveal } from "./dom/render-results";
@@ -33,6 +34,8 @@ export const SlideQuizConfigSchema = v.object({
   endpoints: v.optional(v.partial(QuizEndpointsSchema)),
   titleText: v.optional(v.string()),
   hintText: v.optional(v.string()),
+  /** Audience groups: a question asked once whose answer splits all results by group. */
+  groups: v.optional(GroupsConfigSchema),
   /** Receives every error the engine detects. Wire to your own monitoring. */
   onError: v.optional(v.custom<QuizErrorHandler>((x) => typeof x === "function")),
 });
@@ -89,23 +92,32 @@ export function createPlugin() {
       manager.setActiveQuestion(resultsId);
     }
 
+    // Any other slide may keep a question open (`data-quiz-open`), so the
+    // audience can still answer, for instance while its section is presented.
+    const openId = slide.dataset.quizOpen;
+    if (!quizId && !resultsId && openId) {
+      manager.setActiveQuestion(openId);
+    }
+
     // Non-quiz slide — clear active question so participants see waiting state
-    if (!quizId && !resultsId) {
+    if (!quizId && !resultsId && !openId) {
       manager.clearActiveQuestion();
     }
     if (resultsId && !animatedResults.has(resultsId)) {
       animatedResults.add(resultsId);
       const state = manager.getQuizState(resultsId);
+      const breakdown = manager.getGroupBreakdown(resultsId);
+      const groups = config.groups?.options;
       const wordcloud = findWordcloud(slide, resultsId);
       const plane = findPlane(slide, resultsId);
       if (wordcloud) {
         animateWordCloud(wordcloud, state);
       } else if (plane) {
-        animatePlane(plane, state);
+        animatePlane(plane, state, breakdown, groups);
       } else {
         const bars = findResults(slide, resultsId);
         if (bars) {
-          animateResultBars(bars, state);
+          animateResultBars(bars, state, breakdown, groups);
         }
       }
     }
@@ -167,6 +179,32 @@ export function createPlugin() {
       );
       const renderPromises: Promise<void>[] = [];
       const allQuestions: QuestionPayload[] = [];
+
+      // The audience-group question has no slide of its own; it is asked
+      // first, on the slides that keep it open.
+      if (config.groups) {
+        const { quizId, question, options } = config.groups;
+        manager.setGroupQuiz(quizId);
+        allQuestions.push({ quizId, question, type: "choice", options: options.map(({ label, text }) => ({ label, text })) });
+      }
+
+      // A join QR code anywhere in the deck, e.g. on the opening slides.
+      for (const el of revealEl.querySelectorAll<HTMLElement>("[data-quiz-join]")) {
+        if (!quizUrl) break;
+        const size = Number(el.dataset.quizJoin) || 200;
+        renderPromises.push(
+          renderQR(quizUrl, size, el.closest("section") ?? el)
+            .then((img) => {
+              const url = document.createElement("p");
+              url.className = "sq-join__url";
+              url.textContent = displayUrl(quizUrl);
+              el.classList.add(CLS.join);
+              el.setAttribute("data-sq-injected", "");
+              el.replaceChildren(img, url);
+            })
+            .catch((err) => console.warn("[slide-quiz] Failed to render join QR code:", err)),
+        );
+      }
       for (const slide of questionSlides) {
         const p = renderQuestion(slide, quizUrl, config.titleText, config.hintText).catch(
           (err) => console.warn("[slide-quiz] Failed to render question slide:", err),
@@ -218,13 +256,13 @@ export function createPlugin() {
           );
         } else if (resultType === "plane") {
           renderPromises.push(
-            renderPlane(slide, quizUrl).catch(
+            renderPlane(slide, quizUrl, config.groups?.options).catch(
               (err) => console.warn("[slide-quiz] Failed to render plane slide:", err),
             ),
           );
         } else {
           renderPromises.push(
-            renderResults(slide, quizUrl).catch(
+            renderResults(slide, quizUrl, config.groups?.options).catch(
               (err) => console.warn("[slide-quiz] Failed to render results slide:", err),
             ),
           );
@@ -272,9 +310,12 @@ export function createPlugin() {
           for (const [quizId, quizState] of Object.entries(results)) {
             for (const el of findAllAnswered(revealEl, quizId)) animateCount(el, quizState.total);
             if (animatedResults.has(quizId)) {
+              // A changed group answer changes every quiz's split, so all are redrawn.
+              const breakdown = manager!.getGroupBreakdown(quizId);
+              const groups = config.groups?.options;
               for (const el of findAllWordclouds(revealEl, quizId)) updateWordCloud(el, quizState);
-              for (const el of findAllPlanes(revealEl, quizId)) updatePlane(el, quizState);
-              for (const el of findAllResults(revealEl, quizId)) updateResultBars(el, quizState);
+              for (const el of findAllPlanes(revealEl, quizId)) updatePlane(el, quizState, breakdown, groups);
+              for (const el of findAllResults(revealEl, quizId)) updateResultBars(el, quizState, breakdown, groups);
             }
           }
         }),

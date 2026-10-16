@@ -40,6 +40,9 @@ import {
   encodePlaneAnswer,
   planeAxes,
   PLANE_HINT,
+  RankAnswerSchema,
+  encodeRankAnswer,
+  RANK_HINT,
 } from "../src/quiz-types";
 import type { ParticipantConfig } from "../src/quiz-types";
 import { CLS } from "./selectors";
@@ -149,6 +152,24 @@ export function createParticipantUI(
   const multiSelections: Record<string, Set<string>> = {};
   // Plane: the point currently placed on screen, per quiz
   const planeSelections: Record<string, { x: number; y: number }> = {};
+  // Rank: the order currently on screen, per quiz (option labels, first = most important)
+  const rankOrders: Record<string, string[]> = {};
+
+  function decodeRank(answer: string | null): string[] | undefined {
+    if (!answer) return undefined;
+    const parsed = v.safeParse(RankAnswerSchema, answer);
+    return parsed.success ? parsed.output : undefined;
+  }
+
+  /** A fresh random order, so the order shown does not suggest an answer. */
+  function shuffled<T>(items: T[]): T[] {
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
 
   function decodePlane(answer: string | null): { x: number; y: number } | undefined {
     if (!answer) return undefined;
@@ -171,6 +192,7 @@ export function createParticipantUI(
     multi: "Change your picks and submit again to update them.",
     text: "Edit it and submit again to change your answer.",
     plane: "Tap elsewhere and submit again to move your point.",
+    rank: "Reorder and submit again to change your answer.",
   };
 
   function showStatus(section: HTMLElement, text: string) {
@@ -275,6 +297,64 @@ export function createParticipantUI(
     section.appendChild(submitBtn);
   }
 
+  /** Lay the items out in the current order and enable Submit when it differs from the vote. */
+  function renderRankOrder(quizId: string) {
+    const section = sectionEls[quizId];
+    if (!section) return;
+    const list = section.querySelector<HTMLElement>(`.${CLS.rankList}`);
+    const order = rankOrders[quizId] ?? [];
+    if (list) {
+      order.forEach((label, i) => {
+        const item = list.querySelector<HTMLElement>(`[data-answer="${CSS.escape(label)}"]`);
+        if (!item) return;
+        list.appendChild(item);
+        item.querySelector(".sq-participant__rank-position")!.textContent = String(i + 1);
+        item.querySelector<HTMLButtonElement>("[data-move='-1']")!.disabled = i === 0;
+        item.querySelector<HTMLButtonElement>("[data-move='1']")!.disabled = i === order.length - 1;
+      });
+    }
+    const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`);
+    if (submitBtn) submitBtn.disabled = encodeRankAnswer(order) === manager.getVotedAnswer(quizId);
+  }
+
+  function renderRankInput(q: QuestionPayload, section: HTMLElement) {
+    const hint = document.createElement("p");
+    hint.className = "sq-participant__hint";
+    hint.textContent = q.hint ?? RANK_HINT;
+    section.appendChild(hint);
+
+    const list = document.createElement("ol");
+    list.className = CLS.rankList;
+    for (const opt of q.options) {
+      const item = document.createElement("li");
+      item.className = CLS.rankItem;
+      item.dataset.answer = opt.label;
+      const position = document.createElement("span");
+      position.className = "sq-participant__rank-position";
+      const text = document.createElement("span");
+      text.className = CLS.btnText;
+      text.textContent = opt.text;
+      const move = (step: number, symbol: string, name: string) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "sq-participant__rank-move";
+        button.dataset.move = String(step);
+        button.textContent = symbol;
+        button.setAttribute("aria-label", `Move ${opt.text} ${name}`);
+        return button;
+      };
+      item.append(position, text, move(-1, "\u25B2", "up"), move(1, "\u25BC", "down"));
+      list.appendChild(item);
+    }
+    section.appendChild(list);
+
+    const submitBtn = document.createElement("button");
+    submitBtn.type = "button";
+    submitBtn.className = `${CLS.submit} sq-participant__submit--multi`;
+    submitBtn.textContent = "Submit";
+    section.appendChild(submitBtn);
+  }
+
   function renderQuestionSections(questions: QuestionPayload[]) {
     for (const q of questions) {
       if (renderedQuizIds.has(q.quizId)) continue;
@@ -307,6 +387,8 @@ export function createParticipantUI(
 
       if (q.type === "plane") {
         renderPlaneInput(q, section);
+      } else if (q.type === "rank") {
+        renderRankInput(q, section);
       } else if (isText) {
         const inputWrapper = document.createElement("div");
         inputWrapper.className = "sq-participant__input-wrapper";
@@ -404,7 +486,42 @@ export function createParticipantUI(
 
   function bindClickHandlers(q: QuestionPayload, section: HTMLElement) {
 
-    if (section.dataset.quizType === "plane") {
+    if (section.dataset.quizType === "rank") {
+      const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`)!;
+      rankOrders[q.quizId] ??= decodeRank(manager.getVotedAnswer(q.quizId)) ?? shuffled(q.options.map((o) => o.label));
+      renderRankOrder(q.quizId);
+
+      for (const button of section.querySelectorAll<HTMLButtonElement>(".sq-participant__rank-move")) {
+        button.addEventListener("click", () => {
+          const label = button.closest<HTMLElement>(`.${CLS.rankItem}`)?.dataset.answer;
+          const order = rankOrders[q.quizId];
+          const from = order.indexOf(label ?? "");
+          const to = from + Number(button.dataset.move);
+          if (from < 0 || to < 0 || to >= order.length) return;
+          [order[from], order[to]] = [order[to], order[from]];
+          renderRankOrder(q.quizId);
+
+          const voted = manager.getVotedAnswer(q.quizId);
+          if (!voted) showStatus(section, "");
+          else if (encodeRankAnswer(order) === voted) showVotedRank(section, voted);
+          else showStatus(section, "Not sent yet. Tap Submit to update your order.");
+        });
+      }
+
+      submitBtn.addEventListener("click", async () => {
+        const answer = encodeRankAnswer(rankOrders[q.quizId]);
+        if (answer === manager.getVotedAnswer(q.quizId)) return;
+
+        submitBtn.disabled = true;
+        showStatus(section, "Sending...");
+
+        const ok = await manager.submitAnswer(q.quizId, answer);
+
+        if (ok) showVotedRank(section, answer);
+        else showSendError(section, q.quizId);
+        renderRankOrder(q.quizId);
+      });
+    } else if (section.dataset.quizType === "plane") {
       const field = section.querySelector<HTMLElement>(`.${CLS.planeField}`)!;
       const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`)!;
 
@@ -598,6 +715,14 @@ export function createParticipantUI(
     if (!section) return;
     const isText = section.dataset.quizType === "text";
 
+    if (section.dataset.quizType === "rank") {
+      const order = decodeRank(answer);
+      if (order) rankOrders[quizId] = order;
+      renderRankOrder(quizId);
+      showVotedRank(section, answer);
+      return;
+    }
+
     if (section.dataset.quizType === "plane") {
       const point = decodePlane(answer);
       if (point) planeSelections[quizId] = point;
@@ -633,6 +758,10 @@ export function createParticipantUI(
     showSubmitted(section, isText ? answer : optionText(section, answer));
   }
 
+  function showVotedRank(section: HTMLElement, answer: string) {
+    showSubmitted(section, (decodeRank(answer) ?? []).map((l) => optionText(section, l)).join(" > "));
+  }
+
   function showVotedMulti(section: HTMLElement, answer: string) {
     showSubmitted(section, decodeMulti(answer).map((l) => optionText(section, l)).join(", "));
   }
@@ -641,7 +770,11 @@ export function createParticipantUI(
     const section = sectionEls[quizId];
     if (!section) return;
 
-    if (section.dataset.quizType === "plane") {
+    if (section.dataset.quizType === "rank") {
+      const question = currentQuestions.find((q) => q.quizId === quizId);
+      rankOrders[quizId] = shuffled(question?.options.map((o) => o.label) ?? rankOrders[quizId] ?? []);
+      renderRankOrder(quizId);
+    } else if (section.dataset.quizType === "plane") {
       delete planeSelections[quizId];
       renderPlaneSelection(quizId);
     } else if (section.dataset.quizType === "multi") {

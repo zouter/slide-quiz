@@ -523,6 +523,77 @@ describe("QuizManager — Presenter mode", () => {
     });
   });
 
+  describe("rank questions", () => {
+    function rankPresenter() {
+      const mgr = createPresenter();
+      const options = [
+        { label: "T", text: "Techniques" },
+        { label: "I", text: "Ideas" },
+        { label: "D", text: "Data" },
+      ];
+      mgr.setQuestions([{ quizId: "r1", question: "What drives biology?", type: "rank", options }]);
+      return mgr;
+    }
+
+    it("counts points per option: first 2, second 1, last 0", () => {
+      const mgr = rankPresenter();
+      resultsMessageHandler({ quizId: "r1", answer: '["I","T","D"]', sessionId: "v1" });
+      resultsMessageHandler({ quizId: "r1", answer: '["I","D","T"]', sessionId: "v2" });
+
+      expect(mgr.getQuizState("r1")).toEqual({ votes: { I: 4, T: 1, D: 1 }, total: 2 });
+    });
+
+    it("replaces a respondent's order when they reorder", () => {
+      const mgr = rankPresenter();
+      resultsMessageHandler({ quizId: "r1", answer: '["I","T","D"]', sessionId: "v1" });
+      resultsMessageHandler({ quizId: "r1", answer: '["D","T","I"]', sessionId: "v1" });
+
+      expect(mgr.getQuizState("r1")).toEqual({ votes: { D: 2, T: 1 }, total: 1 });
+    });
+
+    it("drops orders that miss, repeat or invent options", () => {
+      const mgr = rankPresenter();
+      for (const answer of ['["I","T"]', '["I","I","T"]', '["I","T","X"]', '["I","T","D","X"]', "I"]) {
+        resultsMessageHandler({ quizId: "r1", answer, sessionId: answer });
+      }
+
+      expect(mgr.getQuizState("r1")).toEqual({ votes: {}, total: 0 });
+    });
+  });
+
+  describe("audience groups", () => {
+    function groupedPresenter() {
+      const mgr = createPresenter();
+      mgr.setQuestions([
+        { quizId: "who", question: "Who are you?", type: "choice", options: [{ label: "phd", text: "PhD" }, { label: "pi", text: "PI" }] },
+        { quizId: "q1", question: "?", type: "choice", options: [{ label: "A", text: "A" }, { label: "B", text: "B" }] },
+      ]);
+      mgr.setGroupQuiz("who");
+      return mgr;
+    }
+
+    it("splits each answer by the respondent's group", () => {
+      const mgr = groupedPresenter();
+      resultsMessageHandler({ quizId: "who", answer: "phd", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "who", answer: "pi", sessionId: "v2" });
+      resultsMessageHandler({ quizId: "q1", answer: "A", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "q1", answer: "A", sessionId: "v2" });
+      resultsMessageHandler({ quizId: "q1", answer: "B", sessionId: "v3" });
+
+      expect(mgr.getGroupBreakdown("q1")).toEqual({ A: { phd: 1, pi: 1 }, B: { "": 1 } });
+    });
+
+    it("moves earlier answers along when a respondent changes group", () => {
+      const mgr = groupedPresenter();
+      resultsMessageHandler({ quizId: "q1", answer: "A", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "who", answer: "phd", sessionId: "v1" });
+      expect(mgr.getGroupBreakdown("q1")).toEqual({ A: { phd: 1 } });
+
+      resultsMessageHandler({ quizId: "who", answer: "pi", sessionId: "v1" });
+      expect(mgr.getGroupBreakdown("q1")).toEqual({ A: { pi: 1 } });
+    });
+  });
+
   describe("presenter refresh", () => {
     const questions = [{
       quizId: "q1",

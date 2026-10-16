@@ -2,13 +2,13 @@ import * as v from "valibot";
 import { renderQR, displayUrl } from "./render-qr";
 import { html, type Child } from "./html";
 import { CLS } from "./selectors";
-import { JsonQuizOptionsSchema, QuizTypeSchema, MULTI_HINT, PLANE_HINT } from "../quiz-types";
+import { JsonQuizOptionsSchema, QuizTypeSchema, MULTI_HINT, PLANE_HINT, RANK_HINT } from "../quiz-types";
 import { renderPlaneFigure } from "./render-plane";
 import type { QuizType } from "../quiz-types";
 
 /**
  * The hint under a question. A slide's `data-quiz-hint` applies to free-text,
- * multi-select and plane questions; the deck-wide `hintText` only to free text.
+ * multi-select, plane and rank questions; the deck-wide `hintText` only to free text.
  */
 export function questionHint(
   slide: HTMLElement,
@@ -19,6 +19,7 @@ export function questionHint(
   if (quizType === "text") return slideHint ?? deckHint;
   if (quizType === "multi") return slideHint ?? MULTI_HINT;
   if (quizType === "plane") return slideHint ?? PLANE_HINT;
+  if (quizType === "rank") return slideHint ?? RANK_HINT;
   return undefined;
 }
 

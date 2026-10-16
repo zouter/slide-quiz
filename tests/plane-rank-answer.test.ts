@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as v from "valibot";
-import { PlaneAnswerSchema, encodePlaneAnswer, planeAxes } from "../src/quiz-types";
+import { PlaneAnswerSchema, encodePlaneAnswer, planeAxes, RankAnswerSchema, encodeRankAnswer } from "../src/quiz-types";
 
 describe("PlaneAnswerSchema pipeline", () => {
   it("decodes an x,y answer into a point", () => {
@@ -33,5 +33,16 @@ describe("planeAxes", () => {
       { label: "right", text: "Yes" },
     ];
     expect(planeAxes(options)).toEqual({ left: "No", right: "Yes", bottom: "", top: "Love" });
+  });
+});
+
+describe("RankAnswerSchema pipeline", () => {
+  it("keeps the order of the labels", () => {
+    expect(v.parse(RankAnswerSchema, encodeRankAnswer(["I", "D", "T"]))).toEqual(["I", "D", "T"]);
+  });
+
+  it("rejects repeated labels and single items", () => {
+    expect(v.safeParse(RankAnswerSchema, '["I","I"]').success).toBe(false);
+    expect(v.safeParse(RankAnswerSchema, '["I"]').success).toBe(false);
   });
 });

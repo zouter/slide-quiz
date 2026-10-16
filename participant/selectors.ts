@@ -18,4 +18,6 @@ export const CLS = {
   btnFaded: "sq-participant__btn--faded",
   planeField: "sq-participant__plane-field",
   planeMarker: "sq-participant__plane-marker",
+  rankList: "sq-participant__rank",
+  rankItem: "sq-participant__rank-item",
 } as const;

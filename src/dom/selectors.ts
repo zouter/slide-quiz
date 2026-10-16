@@ -18,6 +18,11 @@ export const CLS = {
   resultBar: "sq-result-bar",
   resultBarCorrect: "sq-result-bar--correct",
   resultBarFill: "sq-result-bar__fill",
+  /** One audience group's part of a bar */
+  resultBarSegment: "sq-result-bar__segment",
+  groupLegend: "sq-groups-legend",
+  /** Any element that should show the join QR code */
+  join: "sq-join",
   resultBarPct: "sq-result-bar__pct",
   resultBarCount: "sq-result-bar__count",
   resultsTotal: "sq-results__total",

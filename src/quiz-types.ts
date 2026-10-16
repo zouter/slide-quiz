@@ -14,8 +14,9 @@ import * as v from "valibot";
  * - `multi`: pick any number of options, bar chart of % of respondents
  * - `text`: free text, word cloud results
  * - `plane`: place one point on two axes, scatter results
+ * - `rank`: put all options in order, bars of the share of the highest possible score
  */
-export const QuizTypeSchema = v.optional(v.picklist(["choice", "multi", "text", "plane"]), "choice");
+export const QuizTypeSchema = v.optional(v.picklist(["choice", "multi", "text", "plane", "rank"]), "choice");
 export type QuizType = v.InferOutput<typeof QuizTypeSchema>;
 
 export const VoteStateSchema = v.object({
@@ -58,6 +59,26 @@ export const QuizOptionSchema = v.object({
   text: v.string(),
   correct: v.optional(v.boolean()),
 });
+
+/**
+ * Audience groups: one question, asked once, whose answer puts each respondent
+ * in a group. Results of every other question are then split by group, in the
+ * group's colour. The presenter does the split from the answers it already
+ * holds, so nothing extra crosses the wire.
+ */
+export const GroupsConfigSchema = v.object({
+  quizId: v.pipe(v.string(), v.minLength(1)),
+  question: v.string(),
+  options: v.pipe(
+    v.array(v.object({ label: v.string(), text: v.string(), color: v.string() })),
+    v.minLength(1),
+  ),
+});
+export type GroupsConfig = v.InferOutput<typeof GroupsConfigSchema>;
+export type GroupDef = GroupsConfig["options"][number];
+
+/** Counts per group label; respondents who named no group count under "". */
+export type GroupCounts = Record<string, number>;
 export type QuizOption = v.InferOutput<typeof QuizOptionSchema>;
 
 /** Pipeline: JSON string → parsed array of quiz options. */
@@ -135,6 +156,44 @@ export const PlaneAnswerSchema = v.pipe(
   v.check(([x, y]) => x <= 1 && y <= 1, "Point outside the plane"),
   v.transform(([x, y]) => ({ x, y })),
 );
+
+/**
+ * Pipeline: a rank answer as it travels in `AnswerPayload.answer` (a JSON
+ * array of every option label, first = most important) → the labels in order.
+ */
+export const RankAnswerSchema = v.pipe(
+  v.string(),
+  v.rawTransform(({ dataset, addIssue, NEVER }) => {
+    try {
+      return JSON.parse(dataset.value);
+    } catch {
+      addIssue({ message: "Invalid JSON" });
+      return NEVER;
+    }
+  }),
+  v.array(v.string()),
+  v.minLength(2),
+  v.check((labels) => new Set(labels).size === labels.length, "Repeated option"),
+);
+
+/** Encode an order of option labels (first = most important) as a rank answer string. */
+export function encodeRankAnswer(labels: string[]): string {
+  return JSON.stringify(labels);
+}
+
+/**
+ * Points per position in a ranking of `n` options: first gets n - 1, last 0.
+ * A respondent can give at most n - 1 points to one option.
+ */
+export function rankPoints(position: number, n: number): number {
+  return n - 1 - position;
+}
+
+/** Shown on rank question slides and on the audience page. */
+export const RANK_HINT = "Put them in order, most important first";
+
+/** Shown on rank results slides. */
+export const RANK_RESULTS_NOTE = "Share of the highest possible score";
 
 /** Shown on plane question slides and on the audience page. */
 export const PLANE_HINT = "Tap where you stand";

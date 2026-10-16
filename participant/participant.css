@@ -335,3 +335,54 @@
 .sq-participant__plane-marker[hidden] {
   display: none;
 }
+
+/* ── Rank questions ── */
+
+.sq-participant__rank {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sq-participant__rank-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  border: 1px solid var(--sq-p-btn-border);
+  border-radius: var(--sq-p-border-radius);
+  background: var(--sq-p-btn-bg);
+  color: var(--sq-p-text);
+  font-family: var(--sq-p-font);
+  font-size: clamp(0.95rem, 3.8vw, 1.15rem);
+}
+
+.sq-participant__rank-position {
+  width: 1.4em;
+  color: var(--sq-p-accent);
+  font-weight: 800;
+}
+
+.sq-participant__rank-item .sq-participant__btn-text {
+  flex: 1;
+}
+
+.sq-participant__rank-move {
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 1px solid var(--sq-p-btn-border);
+  border-radius: calc(var(--sq-p-border-radius) * 0.7);
+  background: transparent;
+  color: var(--sq-p-text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.sq-participant__rank-move:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
