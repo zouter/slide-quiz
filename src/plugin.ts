@@ -359,7 +359,8 @@ export function createPlugin() {
         }
       }
 
-      // Listen for slide changes
+      // Listen for slide changes; "ready" covers the slide the deck opens on.
+      deck.on("ready", onSlideChanged);
       deck.on("slidechanged", onSlideChanged);
       deck.on("fragmentshown", onFragment);
       deck.on("fragmenthidden", onFragment);
@@ -368,6 +369,7 @@ export function createPlugin() {
     destroy: () => {
       if (!deck) return;
 
+      deck.off("ready", onSlideChanged);
       deck.off("slidechanged", onSlideChanged);
       deck.off("fragmentshown", onFragment);
       deck.off("fragmenthidden", onFragment);

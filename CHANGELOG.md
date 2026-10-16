@@ -4,6 +4,10 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.3 (zouter fork)
+
+- The slide the deck opens on activates its question (or open question) too.
+
 ## 0.7.2-plane.2 (zouter fork)
 
 - Rank questions (`data-quiz-type="rank"`): order every option; results show each option's share of the highest possible score.
