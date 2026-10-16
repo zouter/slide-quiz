@@ -2,12 +2,13 @@ import * as v from "valibot";
 import { renderQR, displayUrl } from "./render-qr";
 import { html, type Child } from "./html";
 import { CLS } from "./selectors";
-import { JsonQuizOptionsSchema, QuizTypeSchema, MULTI_HINT } from "../quiz-types";
+import { JsonQuizOptionsSchema, QuizTypeSchema, MULTI_HINT, PLANE_HINT } from "../quiz-types";
+import { renderPlaneFigure } from "./render-plane";
 import type { QuizType } from "../quiz-types";
 
 /**
- * The hint under a question. A slide's `data-quiz-hint` applies to free-text
- * and multi-select questions; the deck-wide `hintText` only to free text.
+ * The hint under a question. A slide's `data-quiz-hint` applies to free-text,
+ * multi-select and plane questions; the deck-wide `hintText` only to free text.
  */
 export function questionHint(
   slide: HTMLElement,
@@ -17,6 +18,7 @@ export function questionHint(
   const slideHint = slide.dataset.quizHint;
   if (quizType === "text") return slideHint ?? deckHint;
   if (quizType === "multi") return slideHint ?? MULTI_HINT;
+  if (quizType === "plane") return slideHint ?? PLANE_HINT;
   return undefined;
 }
 
@@ -87,7 +89,7 @@ function renderQuestionContent(
       ? hint
       : html`
           ${hint}
-          ${renderOptions(quizId, rawOptions)}
+          ${quizType === "plane" ? renderPlaneFigure(rawOptions) : renderOptions(quizId, rawOptions)}
         `;
 
   return html`

@@ -33,12 +33,24 @@ export const CLS = {
   wordcloudCloud: "sq-wordcloud__cloud",
   wordcloudWord: "sq-wordcloud__word",
   wordcloudWordTop: "sq-wordcloud__word--top",
+
+  plane: "sq-plane",
+  planePoints: "sq-plane__points",
+  planePoint: "sq-plane__point",
 } as const;
 
 // ── Selector helpers (composite class + data-attribute queries) ──
 
 export function findWordcloud(parent: HTMLElement, quizId: string) {
   return parent.querySelector<HTMLElement>(`.${CLS.wordcloud}[data-sq-quiz="${quizId}"]`);
+}
+
+export function findPlane(parent: HTMLElement, quizId: string) {
+  return parent.querySelector<HTMLElement>(`.${CLS.plane}[data-sq-quiz="${quizId}"]`);
+}
+
+export function findAllPlanes(parent: HTMLElement, quizId: string) {
+  return parent.querySelectorAll<HTMLElement>(`.${CLS.plane}[data-sq-quiz="${quizId}"]`);
 }
 
 export function findResults(parent: HTMLElement, quizId: string) {
@@ -62,5 +74,5 @@ export function findAllResults(parent: HTMLElement, quizId: string) {
 }
 
 export function findAllInjected(parent: HTMLElement) {
-  return parent.querySelectorAll(`.${CLS.question}, .${CLS.results}, .${CLS.wordcloud}`);
+  return parent.querySelectorAll(`.${CLS.question}, .${CLS.results}, .${CLS.wordcloud}, .${CLS.plane}`);
 }

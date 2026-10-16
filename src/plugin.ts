@@ -12,9 +12,12 @@ import { animateCount } from "./dom/animate";
 import { renderQuestion, questionHint } from "./dom/render-question";
 import { renderResults, updateResultBars, animateResultBars, syncCorrectReveal } from "./dom/render-results";
 import { renderWordCloud, updateWordCloud, animateWordCloud } from "./dom/render-wordcloud";
+import { renderPlane, updatePlane, animatePlane } from "./dom/render-plane";
 import {
   CLS,
   findWordcloud,
+  findPlane,
+  findAllPlanes,
   findResults,
   findAllOnline,
   findAllAnswered,
@@ -94,8 +97,11 @@ export function createPlugin() {
       animatedResults.add(resultsId);
       const state = manager.getQuizState(resultsId);
       const wordcloud = findWordcloud(slide, resultsId);
+      const plane = findPlane(slide, resultsId);
       if (wordcloud) {
         animateWordCloud(wordcloud, state);
+      } else if (plane) {
+        animatePlane(plane, state);
       } else {
         const bars = findResults(slide, resultsId);
         if (bars) {
@@ -210,6 +216,12 @@ export function createPlugin() {
               (err) => console.warn("[slide-quiz] Failed to render word cloud slide:", err),
             ),
           );
+        } else if (resultType === "plane") {
+          renderPromises.push(
+            renderPlane(slide, quizUrl).catch(
+              (err) => console.warn("[slide-quiz] Failed to render plane slide:", err),
+            ),
+          );
         } else {
           renderPromises.push(
             renderResults(slide, quizUrl).catch(
@@ -261,6 +273,7 @@ export function createPlugin() {
             for (const el of findAllAnswered(revealEl, quizId)) animateCount(el, quizState.total);
             if (animatedResults.has(quizId)) {
               for (const el of findAllWordclouds(revealEl, quizId)) updateWordCloud(el, quizState);
+              for (const el of findAllPlanes(revealEl, quizId)) updatePlane(el, quizState);
               for (const el of findAllResults(revealEl, quizId)) updateResultBars(el, quizState);
             }
           }

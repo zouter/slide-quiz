@@ -31,7 +31,16 @@ import "./participant.css";
 import * as v from "valibot";
 import { getQuizParticipant } from "../src/quiz-manager";
 import type { ParticipantQuizManager, QuestionPayload } from "../src/quiz-manager";
-import { ParticipantConfigSchema, MultiAnswerSchema, encodeMultiAnswer, MULTI_HINT } from "../src/quiz-types";
+import {
+  ParticipantConfigSchema,
+  MultiAnswerSchema,
+  encodeMultiAnswer,
+  MULTI_HINT,
+  PlaneAnswerSchema,
+  encodePlaneAnswer,
+  planeAxes,
+  PLANE_HINT,
+} from "../src/quiz-types";
 import type { ParticipantConfig } from "../src/quiz-types";
 import { CLS } from "./selectors";
 
@@ -138,6 +147,14 @@ export function createParticipantUI(
   let currentActiveQuizId: string | null = null;
   // Multi-select: the options currently ticked on screen, per quiz
   const multiSelections: Record<string, Set<string>> = {};
+  // Plane: the point currently placed on screen, per quiz
+  const planeSelections: Record<string, { x: number; y: number }> = {};
+
+  function decodePlane(answer: string | null): { x: number; y: number } | undefined {
+    if (!answer) return undefined;
+    const parsed = v.safeParse(PlaneAnswerSchema, answer);
+    return parsed.success ? parsed.output : undefined;
+  }
 
   function decodeMulti(answer: string | null): string[] {
     if (!answer) return [];
@@ -153,6 +170,7 @@ export function createParticipantUI(
     choice: "Tap another option to change your answer.",
     multi: "Change your picks and submit again to update them.",
     text: "Edit it and submit again to change your answer.",
+    plane: "Tap elsewhere and submit again to move your point.",
   };
 
   function showStatus(section: HTMLElement, text: string) {
@@ -203,6 +221,60 @@ export function createParticipantUI(
     }
   }
 
+  /** Show the placed point on the plane and enable Submit when it differs from the vote. */
+  function renderPlaneSelection(quizId: string) {
+    const section = sectionEls[quizId];
+    if (!section) return;
+    const point = planeSelections[quizId];
+    const marker = section.querySelector<HTMLElement>(`.${CLS.planeMarker}`);
+    if (marker) {
+      marker.hidden = !point;
+      if (point) {
+        marker.style.left = `${point.x * 100}%`;
+        marker.style.top = `${(1 - point.y) * 100}%`;
+      }
+    }
+    const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`);
+    if (submitBtn) {
+      submitBtn.disabled =
+        !point || encodePlaneAnswer(point.x, point.y) === manager.getVotedAnswer(quizId);
+    }
+  }
+
+  function renderPlaneInput(q: QuestionPayload, section: HTMLElement) {
+    const hint = document.createElement("p");
+    hint.className = "sq-participant__hint";
+    hint.textContent = q.hint ?? PLANE_HINT;
+    section.appendChild(hint);
+
+    const axes = planeAxes(q.options);
+    const end = (side: string, text: string) => {
+      const span = document.createElement("span");
+      span.className = `sq-participant__plane-end sq-participant__plane-end--${side}`;
+      span.textContent = text;
+      return span;
+    };
+    const field = document.createElement("div");
+    field.className = CLS.planeField;
+    field.setAttribute("aria-label", `${axes.left} to ${axes.right}, ${axes.bottom} to ${axes.top}`);
+    const marker = document.createElement("span");
+    marker.className = CLS.planeMarker;
+    marker.hidden = true;
+    field.append(end("left", axes.left), end("right", axes.right), marker);
+
+    const figure = document.createElement("div");
+    figure.className = "sq-participant__plane";
+    figure.append(end("top", axes.top), field, end("bottom", axes.bottom));
+    section.appendChild(figure);
+
+    const submitBtn = document.createElement("button");
+    submitBtn.type = "button";
+    submitBtn.className = `${CLS.submit} sq-participant__submit--multi`;
+    submitBtn.textContent = "Submit";
+    submitBtn.disabled = true;
+    section.appendChild(submitBtn);
+  }
+
   function renderQuestionSections(questions: QuestionPayload[]) {
     for (const q of questions) {
       if (renderedQuizIds.has(q.quizId)) continue;
@@ -233,7 +305,9 @@ export function createParticipantUI(
         section.appendChild(hint);
       }
 
-      if (isText) {
+      if (q.type === "plane") {
+        renderPlaneInput(q, section);
+      } else if (isText) {
         const inputWrapper = document.createElement("div");
         inputWrapper.className = "sq-participant__input-wrapper";
 
@@ -330,7 +404,42 @@ export function createParticipantUI(
 
   function bindClickHandlers(q: QuestionPayload, section: HTMLElement) {
 
-    if (section.dataset.quizType === "multi") {
+    if (section.dataset.quizType === "plane") {
+      const field = section.querySelector<HTMLElement>(`.${CLS.planeField}`)!;
+      const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`)!;
+
+      field.addEventListener("pointerdown", (e) => {
+        const box = field.getBoundingClientRect();
+        const clamp = (value: number) => Math.min(1, Math.max(0, value));
+        planeSelections[q.quizId] = {
+          x: clamp((e.clientX - box.left) / box.width),
+          y: clamp(1 - (e.clientY - box.top) / box.height),
+        };
+        renderPlaneSelection(q.quizId);
+
+        const point = planeSelections[q.quizId];
+        const voted = manager.getVotedAnswer(q.quizId);
+        if (!voted) showStatus(section, "");
+        else if (encodePlaneAnswer(point.x, point.y) === voted) showSubmitted(section, "Your point");
+        else showStatus(section, "Not sent yet. Tap Submit to move your point.");
+      });
+
+      submitBtn.addEventListener("click", async () => {
+        const point = planeSelections[q.quizId];
+        if (!point) return;
+        const answer = encodePlaneAnswer(point.x, point.y);
+        if (answer === manager.getVotedAnswer(q.quizId)) return;
+
+        submitBtn.disabled = true;
+        showStatus(section, "Sending...");
+
+        const ok = await manager.submitAnswer(q.quizId, answer);
+
+        if (ok) showSubmitted(section, "Your point");
+        else showSendError(section, q.quizId);
+        renderPlaneSelection(q.quizId);
+      });
+    } else if (section.dataset.quizType === "multi") {
       const buttons = section.querySelectorAll<HTMLButtonElement>(`.${CLS.btn}`);
       const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`)!;
       multiSelections[q.quizId] ??= new Set(decodeMulti(manager.getVotedAnswer(q.quizId)));
@@ -489,6 +598,14 @@ export function createParticipantUI(
     if (!section) return;
     const isText = section.dataset.quizType === "text";
 
+    if (section.dataset.quizType === "plane") {
+      const point = decodePlane(answer);
+      if (point) planeSelections[quizId] = point;
+      renderPlaneSelection(quizId);
+      showSubmitted(section, "Your point");
+      return;
+    }
+
     if (section.dataset.quizType === "multi") {
       const labels = decodeMulti(answer);
       multiSelections[quizId] = new Set(labels);
@@ -524,7 +641,10 @@ export function createParticipantUI(
     const section = sectionEls[quizId];
     if (!section) return;
 
-    if (section.dataset.quizType === "multi") {
+    if (section.dataset.quizType === "plane") {
+      delete planeSelections[quizId];
+      renderPlaneSelection(quizId);
+    } else if (section.dataset.quizType === "multi") {
       multiSelections[quizId] = new Set();
       for (const b of section.querySelectorAll<HTMLButtonElement>(`.${CLS.btn}`)) b.disabled = false;
       renderMultiSelection(quizId);

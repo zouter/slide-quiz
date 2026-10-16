@@ -276,3 +276,62 @@
   text-align: center;
   padding-bottom: 1rem;
 }
+
+/* ── Plane (two-axis) questions ── */
+
+.sq-participant__plane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.sq-participant__plane-field {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid var(--sq-p-btn-border);
+  border-radius: var(--sq-p-border-radius);
+  background:
+    linear-gradient(var(--sq-p-text), var(--sq-p-text)) center / 2px 94% no-repeat,
+    linear-gradient(var(--sq-p-text), var(--sq-p-text)) center / 94% 2px no-repeat,
+    var(--sq-p-btn-bg);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.sq-participant__plane-end {
+  color: var(--sq-p-text);
+  font-family: var(--sq-p-font);
+  font-size: clamp(0.75rem, 3vw, 0.9rem);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Horizontal-axis ends sit inside the field, just above the axis. */
+.sq-participant__plane-end--left,
+.sq-participant__plane-end--right {
+  position: absolute;
+  bottom: calc(50% + 0.35em);
+  pointer-events: none;
+}
+
+.sq-participant__plane-end--left { left: 0.6em; }
+.sq-participant__plane-end--right { right: 0.6em; }
+
+.sq-participant__plane-marker {
+  position: absolute;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 3px solid var(--sq-p-bg);
+  border-radius: 50%;
+  background: var(--sq-p-accent);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.sq-participant__plane-marker[hidden] {
+  display: none;
+}

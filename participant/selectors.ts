@@ -16,4 +16,6 @@ export const CLS = {
   btnText: "sq-participant__btn-text",
   btnSelected: "sq-participant__btn--selected",
   btnFaded: "sq-participant__btn--faded",
+  planeField: "sq-participant__plane-field",
+  planeMarker: "sq-participant__plane-marker",
 } as const;

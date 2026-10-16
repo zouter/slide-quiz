@@ -483,6 +483,46 @@ describe("QuizManager — Presenter mode", () => {
     });
   });
 
+  describe("plane questions", () => {
+    function planePresenter() {
+      const mgr = createPresenter();
+      mgr.setQuestions([{ quizId: "p1", question: "Where do you stand?", type: "plane", options: [] }]);
+      return mgr;
+    }
+
+    it("counts people per grid point", () => {
+      const mgr = planePresenter();
+      resultsMessageHandler({ quizId: "p1", answer: "0.80,0.20", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "p1", answer: "0.8,0.2", sessionId: "v2" });
+      resultsMessageHandler({ quizId: "p1", answer: "0.10,0.90", sessionId: "v3" });
+
+      expect(mgr.getQuizState("p1")).toEqual({ votes: { "0.80,0.20": 2, "0.10,0.90": 1 }, total: 3 });
+    });
+
+    it("moves a person's point when they answer again", () => {
+      const mgr = planePresenter();
+      resultsMessageHandler({ quizId: "p1", answer: "0.80,0.20", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "p1", answer: "0.30,0.60", sessionId: "v1" });
+
+      expect(mgr.getQuizState("p1")).toEqual({ votes: { "0.30,0.60": 1 }, total: 1 });
+    });
+
+    it("snaps crafted off-grid points, so the vote map stays bounded", () => {
+      const mgr = planePresenter();
+      resultsMessageHandler({ quizId: "p1", answer: "0.123456,0.987654", sessionId: "v1" });
+
+      expect(mgr.getQuizState("p1")).toEqual({ votes: { "0.12,0.98": 1 }, total: 1 });
+    });
+
+    it("drops answers that are not points on the plane", () => {
+      const mgr = planePresenter();
+      resultsMessageHandler({ quizId: "p1", answer: "A", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "p1", answer: "2,2", sessionId: "v2" });
+
+      expect(mgr.getQuizState("p1")).toEqual({ votes: {}, total: 0 });
+    });
+  });
+
   describe("presenter refresh", () => {
     const questions = [{
       quizId: "q1",

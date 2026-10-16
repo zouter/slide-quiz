@@ -1,6 +1,6 @@
 {
   "name": "slide-quiz",
-  "version": "0.7.2",
+  "version": "0.7.2-plane.1",
   "description": "Live audience quizzes for Reveal.js and Slidev presentations, powered by AnyCable",
   "type": "module",
   "workspaces": [
@@ -42,6 +42,7 @@
     "dev": "vite build --watch",
     "build": "vite build && npm run build:participant && tsc --emitDeclarationOnly",
     "build:participant": "vite build --config vite.config.participant.ts",
+    "prepare": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts"

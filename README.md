@@ -312,6 +312,24 @@ Add data attributes to your slides — the plugin injects all the UI automatical
 
 > **Tip:** Use `data-quiz-id` instead of `data-quiz-results` if you want a separate question slide where the audience votes _before_ seeing results.
 
+#### Plane questions (this fork)
+
+For a two-axis question, set `data-quiz-type="plane"` and name the four axis ends as options labelled `left`, `right`, `bottom` and `top`. Each person taps one point on the plane on their phone and can move it by submitting again; the results slide shows every point, with a dot's area growing with the number of people on it. Points snap to a 50 × 50 grid.
+
+```html
+<section data-quiz-results="q4" data-quiz-type="plane"
+         data-quiz-question="Where do you stand?"
+         data-quiz-options='[
+           {"label":"left","text":"We don\u2019t need this"},
+           {"label":"right","text":"We need this"},
+           {"label":"bottom","text":"I hate it"},
+           {"label":"top","text":"I love it"}
+         ]'>
+</section>
+```
+
+Plane questions need the serverless functions from this fork, which accept the `plane` type. Size the plane on slides with `--sq-plane-size` and its dots with `--sq-plane-point`.
+
 `data-quiz-type` defaults to `"choice"` when omitted, so existing slides work without changes. An option marked `"correct": true` is highlighted on the next fragment step of the results slide, so the answer stays hidden while people vote. `data-quiz-hint` adds a hint under a free-text or multi-select question, on the slide and on the phones.
 
 #### 5. Create the audience page

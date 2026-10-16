@@ -37,6 +37,8 @@ import {
   PresenterStateSchema,
   SubmittedAnswersSchema,
   MultiAnswerSchema,
+  PlaneAnswerSchema,
+  encodePlaneAnswer,
   resultsStream,
   syncStream,
 } from "./quiz-types";
@@ -527,6 +529,11 @@ export class PresenterQuizManager extends QuizManager {
     switch (question?.type ?? "choice") {
       case "text":
         return [answer.trim().toLowerCase()];
+      case "plane": {
+        // Re-snap, so every point lands on the grid and the vote map stays bounded.
+        const parsed = v.safeParse(PlaneAnswerSchema, answer);
+        return parsed.success ? [encodePlaneAnswer(parsed.output.x, parsed.output.y)] : null;
+      }
       case "multi": {
         const labels = new Set(question!.options.map((o) => o.label));
         const parsed = v.safeParse(MultiAnswerSchema, answer);

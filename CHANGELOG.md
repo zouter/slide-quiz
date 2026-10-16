@@ -4,6 +4,11 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.1 (zouter fork)
+
+- Plane questions (`data-quiz-type="plane"`): each person places one point on two labelled axes; results show every point. The serverless functions accept the new type.
+- Installing from git builds the package (`prepare`).
+
 ## Unreleased
 
 ### slide-quiz

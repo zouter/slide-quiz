@@ -13,8 +13,9 @@ import * as v from "valibot";
  * - `choice`: pick one option, bar chart results
  * - `multi`: pick any number of options, bar chart of % of respondents
  * - `text`: free text, word cloud results
+ * - `plane`: place one point on two axes, scatter results
  */
-export const QuizTypeSchema = v.optional(v.picklist(["choice", "multi", "text"]), "choice");
+export const QuizTypeSchema = v.optional(v.picklist(["choice", "multi", "text", "plane"]), "choice");
 export type QuizType = v.InferOutput<typeof QuizTypeSchema>;
 
 export const VoteStateSchema = v.object({
@@ -98,6 +99,45 @@ export const MultiAnswerSchema = v.pipe(
 export function encodeMultiAnswer(labels: string[]): string {
   return JSON.stringify([...new Set(labels)].sort());
 }
+
+/**
+ * A plane question names its four axis ends as options with these labels:
+ * `left` and `right` for the horizontal axis, `bottom` and `top` for the
+ * vertical one.
+ */
+export const PLANE_AXES = ["left", "right", "bottom", "top"] as const;
+export type PlaneAxes = Record<(typeof PLANE_AXES)[number], string>;
+
+/** The axis-end texts of a plane question; an end without an option is blank. */
+export function planeAxes(options: { label: string; text: string }[]): PlaneAxes {
+  const text = (end: string) => options.find((o) => o.label === end)?.text ?? "";
+  return { left: text("left"), right: text("right"), bottom: text("bottom"), top: text("top") };
+}
+
+/** Points snap to a grid of this many steps per axis, which bounds the vote map. */
+export const PLANE_STEPS = 50;
+
+/** Encode a point (0..1 on both axes, y upwards) as a plane answer string, snapped to the grid. */
+export function encodePlaneAnswer(x: number, y: number): string {
+  const snap = (value: number) => (Math.round(Math.min(1, Math.max(0, value)) * PLANE_STEPS) / PLANE_STEPS).toFixed(2);
+  return `${snap(x)},${snap(y)}`;
+}
+
+/**
+ * Pipeline: a plane answer as it travels in `AnswerPayload.answer` ("x,y",
+ * both 0..1) → the point. Like multi-select, the wire format stays a plain
+ * string; only the presenter decodes it.
+ */
+export const PlaneAnswerSchema = v.pipe(
+  v.string(),
+  v.regex(/^\d(\.\d+)?,\d(\.\d+)?$/),
+  v.transform((answer) => answer.split(",").map(Number) as [number, number]),
+  v.check(([x, y]) => x <= 1 && y <= 1, "Point outside the plane"),
+  v.transform(([x, y]) => ({ x, y })),
+);
+
+/** Shown on plane question slides and on the audience page. */
+export const PLANE_HINT = "Tap where you stand";
 
 /** Shown on multi-select question slides and on the audience page. */
 export const MULTI_HINT = "Select all that apply";
