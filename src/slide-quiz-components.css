@@ -585,3 +585,26 @@
   z-index: 2;
   transform: translate(-50%, -50%);
 }
+
+/* ── Answers of one's own ── */
+
+.sq-results__own {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sq-own-answer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.3em 0.8em;
+  border: 1px solid var(--sq-option-border);
+  border-radius: 999px;
+  font-family: var(--sq-font);
+  font-size: clamp(0.8rem, 1.5vw, 1rem);
+}
+
+.sq-own-answer b {
+  color: var(--sq-accent);
+}

@@ -43,6 +43,11 @@ import {
   RankAnswerSchema,
   encodeRankAnswer,
   RANK_HINT,
+  ownAnswer,
+  isOwnAnswer,
+  OWN_HINT,
+  OWN_MAX_LENGTH,
+  OWN_MAX_PER,
 } from "../src/quiz-types";
 import type { ParticipantConfig } from "../src/quiz-types";
 import { CLS } from "./selectors";
@@ -225,11 +230,39 @@ export function createParticipantUI(
     section.querySelector(`.${CLS.status}`)!.classList.add(CLS.statusError);
   }
 
+  /**
+   * Answers of one's own show as ticked buttons after the options; untick one
+   * and it goes.
+   */
+  function syncOwnButtons(section: HTMLElement, selected: Set<string>) {
+    const options = section.querySelector<HTMLElement>(".sq-participant__options");
+    if (!options) return;
+    for (const b of options.querySelectorAll<HTMLButtonElement>(".sq-participant__btn--own")) {
+      if (!selected.has(b.dataset.answer || "")) b.remove();
+    }
+    for (const key of selected) {
+      if (!isOwnAnswer(key) || options.querySelector(`[data-answer="${CSS.escape(key)}"]`)) continue;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `${CLS.btn} sq-participant__btn--own`;
+      btn.dataset.answer = key;
+      const text = document.createElement("span");
+      text.className = CLS.btnText;
+      text.textContent = key.slice(1);
+      const check = document.createElement("span");
+      check.className = "sq-participant__check";
+      check.setAttribute("aria-hidden", "true");
+      btn.append(text, check);
+      options.append(btn);
+    }
+  }
+
   /** Reflect the ticked options on the buttons and the submit button. */
   function renderMultiSelection(quizId: string) {
     const section = sectionEls[quizId];
     if (!section) return;
     const selected = multiSelections[quizId] ?? new Set<string>();
+    syncOwnButtons(section, selected);
     for (const b of section.querySelectorAll<HTMLButtonElement>(`.${CLS.btn}`)) {
       const on = selected.has(b.dataset.answer || "");
       b.classList.toggle(CLS.btnSelected, on);
@@ -442,6 +475,22 @@ export function createParticipantUI(
         }
         section.appendChild(optionsDiv);
 
+        if (isMulti && q.own) {
+          const own = document.createElement("div");
+          own.className = "sq-participant__input-wrapper sq-participant__own";
+          const input = document.createElement("input");
+          input.type = "text";
+          input.maxLength = OWN_MAX_LENGTH;
+          input.className = CLS.input;
+          input.placeholder = OWN_HINT;
+          const add = document.createElement("button");
+          add.type = "button";
+          add.className = "sq-participant__add";
+          add.textContent = "Add";
+          own.append(input, add);
+          section.appendChild(own);
+        }
+
         if (isMulti) {
           const submitBtn = document.createElement("button");
           submitBtn.type = "button";
@@ -558,25 +607,42 @@ export function createParticipantUI(
         renderPlaneSelection(q.quizId);
       });
     } else if (section.dataset.quizType === "multi") {
-      const buttons = section.querySelectorAll<HTMLButtonElement>(`.${CLS.btn}`);
+      const buttons = () => section.querySelectorAll<HTMLButtonElement>(`.${CLS.btn}`);
       const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`)!;
       multiSelections[q.quizId] ??= new Set(decodeMulti(manager.getVotedAnswer(q.quizId)));
 
-      for (const btn of buttons) {
-        btn.addEventListener("click", () => {
-          const label = btn.dataset.answer;
-          if (!label) return;
-          const selected = multiSelections[q.quizId];
-          if (selected.has(label)) selected.delete(label);
-          else selected.add(label);
-          renderMultiSelection(q.quizId);
+      const changed = () => {
+        renderMultiSelection(q.quizId);
+        const voted = manager.getVotedAnswer(q.quizId);
+        if (!voted) showStatus(section, "");
+        else if (encodeMultiAnswer([...multiSelections[q.quizId]]) === voted) showVotedMulti(section, voted);
+        else showStatus(section, "Not sent yet. Tap Submit to update your answer.");
+      };
 
-          const voted = manager.getVotedAnswer(q.quizId);
-          if (!voted) showStatus(section, "");
-          else if (encodeMultiAnswer([...selected]) === voted) showVotedMulti(section, voted);
-          else showStatus(section, "Not sent yet. Tap Submit to update your answer.");
-        });
-      }
+      // One listener for the options, so answers of one's own added later work too.
+      section.querySelector(".sq-participant__options")!.addEventListener("click", (event) => {
+        const btn = (event.target as Element).closest<HTMLButtonElement>(`.${CLS.btn}`);
+        const label = btn?.dataset.answer;
+        if (!btn || btn.disabled || !label) return;
+        const selected = multiSelections[q.quizId];
+        if (selected.has(label)) selected.delete(label);
+        else selected.add(label);
+        changed();
+      });
+
+      const ownInput = section.querySelector<HTMLInputElement>(`.sq-participant__own .${CLS.input}`);
+      const addOwn = () => {
+        const key = ownAnswer(ownInput?.value ?? "");
+        const selected = multiSelections[q.quizId];
+        if (!key || [...selected].filter(isOwnAnswer).length >= OWN_MAX_PER) return;
+        selected.add(key);
+        ownInput!.value = "";
+        changed();
+      };
+      section.querySelector(".sq-participant__add")?.addEventListener("click", addOwn);
+      ownInput?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") addOwn();
+      });
 
       submitBtn.addEventListener("click", async () => {
         const labels = [...multiSelections[q.quizId]];
@@ -585,12 +651,12 @@ export function createParticipantUI(
         if (answer === manager.getVotedAnswer(q.quizId)) return;
 
         submitBtn.disabled = true;
-        for (const b of buttons) b.disabled = true;
+        for (const b of buttons()) b.disabled = true;
         showStatus(section, "Sending...");
 
         const ok = await manager.submitAnswer(q.quizId, answer);
 
-        for (const b of buttons) b.disabled = false;
+        for (const b of buttons()) b.disabled = false;
         if (ok) showVotedMulti(section, answer);
         else showSendError(section, q.quizId);
         renderMultiSelection(q.quizId);

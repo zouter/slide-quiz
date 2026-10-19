@@ -60,6 +60,7 @@ const QuestionPayloadSchema = v.object({
   type: v.optional(v.picklist(["choice", "multi", "text", "plane", "rank"]), "choice"),
   options: v.optional(v.array(v.object({ label: v.string(), text: v.string() })), []),
   hint: v.optional(v.string()),
+  own: v.optional(v.boolean()),
 });
 
 export const SyncSchema = v.object({

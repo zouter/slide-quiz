@@ -32,6 +32,8 @@ export const QuestionPayloadSchema = v.object({
   options: v.optional(v.array(v.object({ label: v.string(), text: v.string() })), []),
   /** Shown under the question on the audience page (free text and multi-select) */
   hint: v.optional(v.string()),
+  /** Multi-select: respondents may add answers of their own */
+  own: v.optional(v.boolean()),
 });
 export type QuestionPayload = v.InferOutput<typeof QuestionPayloadSchema>;
 
@@ -130,6 +132,29 @@ export const MultiAnswerSchema = v.pipe(
   v.minLength(1),
   v.transform((labels) => [...new Set(labels)].sort()),
 );
+
+/**
+ * Answers of their own, on multi-select questions that allow them, travel among
+ * the option labels with this prefix. The presenter counts them tidied up (one
+ * spacing, lower case, at most OWN_MAX_LENGTH characters), at most OWN_MAX_PER
+ * respondent, so the vote map stays bounded.
+ */
+export const OWN_PREFIX = "+";
+export const OWN_MAX_LENGTH = 60;
+export const OWN_MAX_PER = 3;
+
+/** An answer of one's own as it travels and is counted, or null if empty. */
+export function ownAnswer(text: string): string | null {
+  const tidy = text.replace(/\s+/g, " ").trim().toLowerCase().slice(0, OWN_MAX_LENGTH).trim();
+  return tidy ? OWN_PREFIX + tidy : null;
+}
+
+export function isOwnAnswer(key: string): boolean {
+  return key.startsWith(OWN_PREFIX);
+}
+
+/** Shown on the audience page for multi-select questions that allow answers of one's own. */
+export const OWN_HINT = "Add your own";
 
 /** Encode selected option labels as a multi-select answer string. */
 export function encodeMultiAnswer(labels: string[]): string {

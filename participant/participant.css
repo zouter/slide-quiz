@@ -386,3 +386,25 @@
   opacity: 0.25;
   cursor: default;
 }
+
+/* ── Answers of one's own ── */
+
+.sq-participant__own {
+  margin-top: 0.25rem;
+}
+
+.sq-participant__add {
+  padding: 0.85rem 1.1rem;
+  border: 1px solid var(--sq-p-accent);
+  border-radius: var(--sq-p-border-radius);
+  background: transparent;
+  color: var(--sq-p-accent);
+  font-family: var(--sq-p-font);
+  font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sq-participant__btn--own .sq-participant__btn-text {
+  font-style: italic;
+}

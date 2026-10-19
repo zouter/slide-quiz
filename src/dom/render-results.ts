@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import type { VoteState, GroupDef, GroupCounts } from "../quiz-types";
-import { JsonQuizOptionsSchema, QuizTypeSchema, MULTI_RESULTS_NOTE, RANK_RESULTS_NOTE, AUDIENCE_LABELS } from "../quiz-types";
+import { JsonQuizOptionsSchema, QuizTypeSchema, MULTI_RESULTS_NOTE, RANK_RESULTS_NOTE, AUDIENCE_LABELS, isOwnAnswer } from "../quiz-types";
 import { html, type Child } from "./html";
 import { renderResultsQR } from "./render-results-qr";
 import { CLS } from "./selectors";
@@ -53,6 +53,7 @@ export async function renderResults(
               </div>
             `,
           )}
+          ${slide.dataset.quizOwn !== undefined ? html`<div class="${CLS.ownAnswers}"></div>` : null}
           <p class="${CLS.resultsTotal}">${audienceLine()}</p>
         </div>
         ${qrBlock}
@@ -107,6 +108,28 @@ function barPercent(wrapper: HTMLElement, count: number, state: VoteState): numb
 }
 
 /**
+ * Answers people added themselves, as chips with their count, most frequent first.
+ */
+function updateOwnAnswers(wrapper: HTMLElement, state: VoteState): void {
+  const container = wrapper.querySelector<HTMLElement>(`.${CLS.ownAnswers}`);
+  if (!container) return;
+  const own = Object.entries(state.votes)
+    .filter(([key, count]) => isOwnAnswer(key) && count > 0)
+    .sort(([a, x], [b, y]) => y - x || a.localeCompare(b));
+  container.replaceChildren(
+    ...own.map(([key, count]) => {
+      const chip = document.createElement("span");
+      chip.className = "sq-own-answer";
+      chip.textContent = key.slice(1);
+      const n = document.createElement("b");
+      n.textContent = String(count);
+      chip.append(n);
+      return chip;
+    }),
+  );
+}
+
+/**
  * Update result bars with current vote state.
  */
 export function updateResultBars(
@@ -134,6 +157,7 @@ export function updateResultBars(
     if (pctEl) pctEl.textContent = `${pct}%`;
     if (countEl) countEl.textContent = wrapper.dataset.quizType === "rank" ? "" : String(count);
   }
+  updateOwnAnswers(wrapper, state);
 }
 
 /**
@@ -178,6 +202,7 @@ export function animateResultBars(
     if (countEl) countEl.textContent = wrapper.dataset.quizType === "rank" ? "" : String(count);
     i++;
   }
+  updateOwnAnswers(wrapper, state);
 }
 
 /**

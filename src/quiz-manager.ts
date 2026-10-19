@@ -41,6 +41,9 @@ import {
   encodePlaneAnswer,
   RankAnswerSchema,
   rankPoints,
+  ownAnswer,
+  isOwnAnswer,
+  OWN_MAX_PER,
   resultsStream,
   syncStream,
 } from "./quiz-types";
@@ -590,8 +593,13 @@ export class PresenterQuizManager extends QuizManager {
         if (!parsed.success && labels.has(answer)) this.warnOutdatedAudiencePage(quizId);
         const picked = parsed.success ? parsed.output : [answer];
         // Count only the question's own options, so a crafted answer cannot
-        // grow the vote map (and every sync payload) without bound.
+        // grow the vote map (and every sync payload) without bound; answers of
+        // one's own only where the question allows them, tidied and capped.
         const keys = picked.filter((label) => labels.has(label));
+        if (question?.own) {
+          const own = picked.filter(isOwnAnswer).map((key) => ownAnswer(key.slice(1))).filter((key) => key !== null);
+          keys.push(...[...new Set(own)].slice(0, OWN_MAX_PER));
+        }
         return keys.length > 0 ? keys : null;
       }
       default:

@@ -338,6 +338,10 @@ Set `data-quiz-type="rank"`: each person puts every option in order, starting fr
 
 A question is answerable while its question or results slide is shown. Mark any other slide with `data-quiz-open="<quizId>"` to keep that question open there too, for example on the slides between a question and its results.
 
+#### Answers of one's own (this fork)
+
+Add `data-quiz-own` to a multi-select question to let people add up to three answers of their own on their phones, beside the options. The results show them as chips with their count under the bars, tidied up (one spacing, lower case, at most 60 characters).
+
 #### Named voters (this fork)
 
 List `voters` in the config (`{ sessionId, name, photo }`) to show some people's answers by portrait instead of counting them, for instance the speakers'. Their phones open the audience page with that session id: pass it as `sessionId` to `createParticipantUI`, for instance from a link parameter. Results bars show the portrait beside each option they picked (with the place they gave, on rank questions); a plane shows it at their point.

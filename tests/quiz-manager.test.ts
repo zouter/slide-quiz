@@ -594,6 +594,36 @@ describe("QuizManager — Presenter mode", () => {
     });
   });
 
+  describe("answers of one's own", () => {
+    function ownPresenter(own: boolean) {
+      const mgr = createPresenter();
+      mgr.setQuestions([{ quizId: "o1", question: "?", type: "multi", own, options: [{ label: "A", text: "A" }, { label: "B", text: "B" }] }]);
+      return mgr;
+    }
+
+    it("counts them tidied, next to the options, where the question allows them", () => {
+      const mgr = ownPresenter(true);
+      resultsMessageHandler({ quizId: "o1", answer: '["A","+Better  Coffee "]', sessionId: "v1" });
+      resultsMessageHandler({ quizId: "o1", answer: '["+better coffee"]', sessionId: "v2" });
+
+      expect(mgr.getQuizState("o1")).toEqual({ votes: { A: 1, "+better coffee": 2 }, total: 2 });
+    });
+
+    it("keeps at most three per respondent", () => {
+      const mgr = ownPresenter(true);
+      resultsMessageHandler({ quizId: "o1", answer: '["+a","+b","+c","+d"]', sessionId: "v1" });
+
+      expect(Object.keys(mgr.getQuizState("o1").votes)).toHaveLength(3);
+    });
+
+    it("ignores them where the question does not allow them", () => {
+      const mgr = ownPresenter(false);
+      resultsMessageHandler({ quizId: "o1", answer: '["B","+anything"]', sessionId: "v1" });
+
+      expect(mgr.getQuizState("o1")).toEqual({ votes: { B: 1 }, total: 1 });
+    });
+  });
+
   describe("named voters", () => {
     it("records their answers apart and keeps them out of the counts", () => {
       const mgr = createPresenter();

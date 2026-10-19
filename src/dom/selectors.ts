@@ -21,6 +21,8 @@ export const CLS = {
   /** One audience group's part of a bar */
   resultBarSegment: "sq-result-bar__segment",
   groupLegend: "sq-groups-legend",
+  /** Answers the audience added themselves, on a results slide */
+  ownAnswers: "sq-results__own",
   /** A named voter's portrait on a results slide */
   voter: "sq-voter",
   resultBarVoters: "sq-result-bar__voters",

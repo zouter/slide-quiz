@@ -4,6 +4,10 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.5 (zouter fork)
+
+- Answers of one's own on multi-select questions (`data-quiz-own`); the serverless functions pass the flag on.
+
 ## 0.7.2-plane.4 (zouter fork)
 
 - Named voters (`voters` config, `sessionId` on the audience page): shown by portrait on the results, kept out of the counts.
