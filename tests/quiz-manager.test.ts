@@ -594,6 +594,20 @@ describe("QuizManager — Presenter mode", () => {
     });
   });
 
+  describe("named voters", () => {
+    it("records their answers apart and keeps them out of the counts", () => {
+      const mgr = createPresenter();
+      mgr.setQuestions([{ quizId: "q1", question: "?", type: "choice", options: [{ label: "A", text: "A" }, { label: "B", text: "B" }] }]);
+      mgr.setNamedVoters(["voter:martin"]);
+      resultsMessageHandler({ quizId: "q1", answer: "A", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "q1", answer: "B", sessionId: "voter:martin" });
+      resultsMessageHandler({ quizId: "q1", answer: "A", sessionId: "voter:martin" });
+
+      expect(mgr.getQuizState("q1")).toEqual({ votes: { A: 1 }, total: 1 });
+      expect(mgr.store.voterAnswers.get()).toEqual({ q1: { "voter:martin": "A" } });
+    });
+  });
+
   describe("presenter refresh", () => {
     const questions = [{
       quizId: "q1",

@@ -21,6 +21,9 @@ export const CLS = {
   /** One audience group's part of a bar */
   resultBarSegment: "sq-result-bar__segment",
   groupLegend: "sq-groups-legend",
+  /** A named voter's portrait on a results slide */
+  voter: "sq-voter",
+  resultBarVoters: "sq-result-bar__voters",
   /** Any element that should show the join QR code */
   join: "sq-join",
   resultBarPct: "sq-result-bar__pct",

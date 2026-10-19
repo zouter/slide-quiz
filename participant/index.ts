@@ -135,6 +135,7 @@ export function createParticipantUI(
   const manager: ParticipantQuizManager = getQuizParticipant({
     wsUrl: config.wsUrl,
     quizGroupId: config.quizGroupId,
+    sessionId: config.sessionId,
     endpoints: config.endpoints,
     onError: config.onError,
   });

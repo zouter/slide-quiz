@@ -77,6 +77,21 @@ export const GroupsConfigSchema = v.object({
 export type GroupsConfig = v.InferOutput<typeof GroupsConfigSchema>;
 export type GroupDef = GroupsConfig["options"][number];
 
+/**
+ * Named voters (for instance the speakers): their phones open the audience page
+ * with a fixed session id, their answers are kept out of the counts, and the
+ * results show their portrait on what they chose.
+ */
+export const NamedVoterSchema = v.object({
+  sessionId: v.pipe(v.string(), v.minLength(1)),
+  name: v.string(),
+  photo: v.optional(v.string()),
+});
+export type NamedVoter = v.InferOutput<typeof NamedVoterSchema>;
+
+/** quizId → named voter's session id → their raw answer. */
+export type VoterAnswers = Record<string, Record<string, string>>;
+
 /** Counts per group label; respondents who named no group count under "". */
 export type GroupCounts = Record<string, number>;
 export type QuizOption = v.InferOutput<typeof QuizOptionSchema>;
@@ -273,6 +288,8 @@ export type QuizManagerConfig = v.InferOutput<typeof QuizManagerConfigSchema>;
 export const ParticipantConfigSchema = v.object({
   wsUrl: v.pipe(v.string(), v.minLength(1)),
   quizGroupId: v.pipe(v.string(), v.minLength(1)),
+  /** A fixed session id, for a named voter's phone */
+  sessionId: v.optional(v.pipe(v.string(), v.minLength(1))),
   questions: v.optional(v.array(QuestionPayloadSchema)),
   endpoints: v.optional(v.partial(QuizEndpointsSchema)),
   brandText: v.optional(v.string()),
@@ -299,6 +316,8 @@ export const PresenterStateSchema = v.object({
   sessionVotes: v.optional(v.record(v.string(), v.record(v.string(), SessionVoteSchema))),
   /** Sequence number of the last sync broadcast, so it keeps increasing after a reload */
   seq: v.optional(v.number()),
+  /** Named voters' answers, kept out of the counts */
+  voterAnswers: v.optional(v.record(v.string(), v.record(v.string(), v.string()))),
 });
 
 export const SubmittedAnswersSchema = v.record(v.string(), v.string());

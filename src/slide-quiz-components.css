@@ -530,3 +530,58 @@
   font-size: clamp(0.5rem, 0.9vw, 0.7rem);
   color: var(--sq-text-muted);
 }
+
+/* ── Named voters ── */
+
+.sq-voter {
+  position: relative;
+  display: inline-grid;
+  width: var(--sq-voter-size, 2.2rem);
+  height: var(--sq-voter-size, 2.2rem);
+  flex: none;
+  place-items: center;
+  border: 2px solid var(--sq-accent);
+  border-radius: 50%;
+  background: var(--sq-bar-track);
+  color: var(--sq-text);
+  font-family: var(--sq-font);
+  font-weight: 700;
+}
+
+.sq-voter img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* The place a named voter gave on a rank question. */
+.sq-voter b {
+  position: absolute;
+  right: -0.35em;
+  bottom: -0.2em;
+  display: grid;
+  width: 1.3em;
+  height: 1.3em;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--sq-accent);
+  color: #fff;
+  font-size: 0.7em;
+}
+
+.sq-result-bar:has(.sq-result-bar__voters) {
+  grid-template-columns: 12rem 1fr 5rem auto;
+}
+
+.sq-result-bar__voters {
+  display: flex;
+  gap: 0.4rem;
+  min-width: calc(var(--sq-voter-size, 2.2rem) * 2 + 0.4rem);
+}
+
+.sq-plane__points .sq-voter {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+}

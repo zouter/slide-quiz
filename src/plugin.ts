@@ -7,7 +7,8 @@
 import * as v from "valibot";
 import type { QuestionPayload, PresenterQuizManager, QuizErrorHandler } from "./quiz-manager";
 import { getQuizPresenter, removeQuizPresenter } from "./quiz-manager";
-import { QuizEndpointsSchema, JsonQuizOptionsSchema, QuizTypeSchema, GroupsConfigSchema } from "./quiz-types";
+import { QuizEndpointsSchema, JsonQuizOptionsSchema, QuizTypeSchema, GroupsConfigSchema, NamedVoterSchema } from "./quiz-types";
+import { updateVoterMarks } from "./dom/render-voters";
 import { renderQR, displayUrl } from "./dom/render-qr";
 import { animateCount } from "./dom/animate";
 import { renderQuestion, questionHint } from "./dom/render-question";
@@ -36,6 +37,8 @@ export const SlideQuizConfigSchema = v.object({
   hintText: v.optional(v.string()),
   /** Audience groups: a question asked once whose answer splits all results by group. */
   groups: v.optional(GroupsConfigSchema),
+  /** Voters (e.g. the speakers) shown by portrait on the results instead of counted */
+  voters: v.optional(v.array(NamedVoterSchema)),
   /** Receives every error the engine detects. Wire to your own monitoring. */
   onError: v.optional(v.custom<QuizErrorHandler>((x) => typeof x === "function")),
 });
@@ -110,14 +113,17 @@ export function createPlugin() {
       const groups = config.groups?.options;
       const wordcloud = findWordcloud(slide, resultsId);
       const plane = findPlane(slide, resultsId);
+      const voterAnswers = manager.store.voterAnswers.get()[resultsId];
       if (wordcloud) {
         animateWordCloud(wordcloud, state);
       } else if (plane) {
         animatePlane(plane, state, breakdown, groups);
+        updateVoterMarks(plane, config.voters, voterAnswers);
       } else {
         const bars = findResults(slide, resultsId);
         if (bars) {
           animateResultBars(bars, state, breakdown, groups);
+          updateVoterMarks(bars, config.voters, voterAnswers);
         }
       }
     }
@@ -182,6 +188,7 @@ export function createPlugin() {
 
       // The audience-group question has no slide of its own; it is asked
       // first, on the slides that keep it open.
+      if (config.voters) manager.setNamedVoters(config.voters.map((voter) => voter.sessionId));
       if (config.groups) {
         const { quizId, question, options } = config.groups;
         manager.setGroupQuiz(quizId);
@@ -316,6 +323,14 @@ export function createPlugin() {
               for (const el of findAllWordclouds(revealEl, quizId)) updateWordCloud(el, quizState);
               for (const el of findAllPlanes(revealEl, quizId)) updatePlane(el, quizState, breakdown, groups);
               for (const el of findAllResults(revealEl, quizId)) updateResultBars(el, quizState, breakdown, groups);
+            }
+          }
+        }),
+        manager.store.voterAnswers.subscribe((answers) => {
+          for (const [quizId, quizAnswers] of Object.entries(answers)) {
+            if (!animatedResults.has(quizId)) continue;
+            for (const el of [...findAllResults(revealEl, quizId), ...findAllPlanes(revealEl, quizId)]) {
+              updateVoterMarks(el, config.voters, quizAnswers);
             }
           }
         }),

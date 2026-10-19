@@ -58,6 +58,7 @@ import type {
   QuizErrorHandler,
   ConnectionStatus,
   GroupCounts,
+  VoterAnswers,
 } from "./quiz-types";
 
 // ── Dev-only validation flag ──
@@ -227,6 +228,8 @@ export class QuizManager {
     connectionError: atom<string | null>(null),
     /** Presenter only: phones run an audience page older than the deck */
     audienceWarning: atom<string | null>(null),
+    /** Presenter only: named voters' answers, shown beside the counts */
+    voterAnswers: map<VoterAnswers>({}),
   };
 
   constructor(config: QuizManagerConfig, historyWindow: number) {
@@ -450,6 +453,8 @@ export class PresenterQuizManager extends QuizManager {
   private sessionVotes = new Map<string, Map<string, SessionVote>>();
   // The question whose answer puts each respondent in an audience group
   private groupQuizId: string | null = null;
+  // Session ids of named voters, whose answers are shown, not counted
+  private namedVoters = new Set<string>();
 
   constructor(config: QuizManagerConfig) {
     super(config, 0); // No history — presenter is source of truth
@@ -488,6 +493,11 @@ export class PresenterQuizManager extends QuizManager {
     for (const quizId of this.sessionVotes.keys()) this.recount(quizId);
     // Phones need the new question list (and, after a reload, the restored question)
     this.sendSync();
+  }
+
+  /** Name the voters whose answers are shown beside the results instead of counted. */
+  setNamedVoters(sessionIds: string[]): void {
+    this.namedVoters = new Set(sessionIds);
   }
 
   /** Name the question whose answer puts each respondent in an audience group. */
@@ -644,6 +654,15 @@ export class PresenterQuizManager extends QuizManager {
           cause: data.answer,
           context: { quizGroupId: this.quizGroupId, quizId },
         });
+      }
+      return;
+    }
+
+    if (this.namedVoters.has(sessionId)) {
+      const voters = this.store.voterAnswers.get()[quizId] ?? {};
+      if (voters[sessionId] !== data.answer) {
+        this.store.voterAnswers.setKey(quizId, { ...voters, [sessionId]: data.answer });
+        this.persistState();
       }
       return;
     }
@@ -846,6 +865,7 @@ export class PresenterQuizManager extends QuizManager {
             [...this.sessionVotes].map(([quizId, votes]) => [quizId, Object.fromEntries(votes)]),
           ),
           seq: this.syncSeq,
+          voterAnswers: this.store.voterAnswers.get(),
         }),
       );
     } catch (e) {
@@ -868,6 +888,7 @@ export class PresenterQuizManager extends QuizManager {
       }
       if (saved.seq) this.syncSeq = saved.seq;
       if (saved.results) this.store.results.set(saved.results);
+      if (saved.voterAnswers) this.store.voterAnswers.set(saved.voterAnswers);
       for (const [quizId, votes] of Object.entries(saved.sessionVotes ?? {})) {
         this.sessionVotes.set(quizId, new Map(Object.entries(votes)));
       }
@@ -1084,6 +1105,7 @@ const participants = new Map<string, ParticipantQuizManager>();
 export function getQuizParticipant(config: {
   wsUrl: string;
   quizGroupId: string;
+  sessionId?: string;
   endpoints?: Partial<QuizEndpoints>;
   onError?: QuizErrorHandler;
 }): ParticipantQuizManager {
