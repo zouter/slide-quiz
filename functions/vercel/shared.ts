@@ -72,6 +72,7 @@ export const SyncSchema = v.object({
   questionIndex: v.optional(v.number()),
   totalCount: v.optional(v.number()),
   seq: v.optional(v.number()),
+  control: v.optional(v.number()),
 });
 
 // ── Stream name builders ──

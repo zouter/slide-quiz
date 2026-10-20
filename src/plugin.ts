@@ -349,6 +349,26 @@ export function createPlugin() {
         manager.store.audienceWarning.subscribe(() => renderErrorBanner()),
       );
 
+      // The window the presenter presents from takes control; every other
+      // window then stops moving the phones. Never focused, like the banner.
+      const controlButton = document.createElement("button");
+      controlButton.className = CLS.control;
+      controlButton.setAttribute("data-sq-injected", "");
+      controlButton.tabIndex = -1;
+      controlButton.addEventListener("mousedown", (e) => e.preventDefault());
+      controlButton.addEventListener("click", () => manager?.takeControl());
+      revealEl.appendChild(controlButton);
+      unsubs.push(
+        manager.store.control.subscribe((state) => {
+          controlButton.dataset.state = state;
+          controlButton.textContent = state === "mine" ? "\u25CF In control" : "Take control";
+          controlButton.title =
+            state === "mine" ? "Phones follow this window"
+            : state === "other" ? "Another window moves the phones; click to take over"
+            : "Make this the only window that moves the phones";
+        }),
+      );
+
       // Connection problems come first: without a WebSocket nothing else matters.
       // The slides are on the projector, so the banner starts as a small pill
       // and shows the full message only when the presenter clicks it.

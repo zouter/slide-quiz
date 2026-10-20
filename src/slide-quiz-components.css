@@ -369,6 +369,41 @@
 }
 
 /* On the projected slide: a small pill; clicking it shows the full message */
+/* Take control: bottom right, beside the deck's own controls. */
+.sq-control {
+  position: fixed;
+  right: 7.5rem;
+  bottom: 1rem;
+  z-index: 100;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--sq-option-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sq-text) 6%, transparent);
+  color: var(--sq-text-muted);
+  font-family: var(--sq-font);
+  font-size: 0.85rem;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.sq-control[data-state="mine"] {
+  border-color: #16a34a;
+  color: #16a34a;
+}
+
+.sq-control[data-state="other"] {
+  border-color: #d97706;
+  background: color-mix(in srgb, #d97706 15%, transparent);
+  color: #b45309;
+  opacity: 1;
+}
+
+@media print {
+  .sq-control {
+    display: none;
+  }
+}
+
 .sq-sync-error--compact {
   left: auto;
   right: 1rem;

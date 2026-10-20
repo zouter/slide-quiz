@@ -130,14 +130,14 @@ afterEach(() => {
 });
 
 describe("QuizManager — Presenter mode", () => {
-  it("creates cable with no history (current timestamp)", () => {
+  it("creates cable with 5-min history window, to learn whether another tab has taken control", () => {
     const { createCable: cc } = anycableWeb;
     const before = Date.now();
     createPresenter();
     const call = vi.mocked(cc).mock.calls.at(-1)!;
     expect(call[0]).toBe(WS_URL);
     const ts = call[1].protocolOptions.historyTimestamp;
-    const expected = Math.floor(before / 1000);
+    const expected = Math.floor((before - 5 * 60_000) / 1000);
     expect(ts).toBeGreaterThanOrEqual(expected - 1);
     expect(ts).toBeLessThanOrEqual(expected + 1);
   });
@@ -1707,6 +1707,25 @@ describe("Sync delivery and recovery", () => {
     expect(participant.store.activeQuestionId.get()).toBeNull();
   });
 
+  it("a tab stops broadcasting once another one takes control, and broadcasts again after taking it back", async () => {
+    const net = relay();
+    const { presenter } = presenterOnResultsSlide();
+    const presenterSync = syncMessageHandler;
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    presenterSync({ sessionId: "laptop", activeQuestionId: "q2", results: {}, control: 1 });
+    expect(presenter.store.control.get()).toBe("other");
+    const sentBefore = net.sent.length;
+    presenter.setActiveQuestion("q2");
+    await vi.advanceTimersByTimeAsync(5 * 60_000);
+    expect(net.sent.length).toBe(sentBefore);
+
+    presenter.takeControl();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(presenter.store.control.get()).toBe("mine");
+    expect(net.sent.at(-1)!.control).toBe(2);
+  });
+
   it("disconnect cancels the keepalive, pending retries and the request in flight", async () => {
     const net = relay("hang");
     const { presenter } = presenterOnResultsSlide();
@@ -1736,6 +1755,20 @@ describe("Sync delivery and recovery", () => {
 
 describe("Participant — broadcast ordering", () => {
   beforeEach(() => vi.useFakeTimers());
+
+  it("once a tab has taken control, follows only the highest claim", async () => {
+    const mgr = createParticipant();
+    syncMessageHandler({ sessionId: "deck", activeQuestionId: "q1", results: {}, control: 2 });
+    await vi.advanceTimersByTimeAsync(500);
+    syncMessageHandler({ sessionId: "forgotten", activeQuestionId: "q9", results: {} });
+    syncMessageHandler({ sessionId: "older", activeQuestionId: "q8", results: {}, control: 1 });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(mgr.store.activeQuestionId.get()).toBe("q1");
+
+    syncMessageHandler({ sessionId: "laptop", activeQuestionId: "q2", results: {}, control: 3 });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(mgr.store.activeQuestionId.get()).toBe("q2");
+  });
 
   it("drops a broadcast older than one already applied from the same presenter tab", async () => {
     const mgr = createParticipant();

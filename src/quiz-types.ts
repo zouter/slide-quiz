@@ -47,6 +47,8 @@ export const SyncPayloadSchema = v.object({
   totalCount: v.optional(v.number()),
   /** Increases with every broadcast from one presenter tab. Absent from functions older than 0.7.2. */
   seq: v.optional(v.number()),
+  /** The claim of a presenter tab that took control; phones then follow only the highest claim. */
+  control: v.optional(v.number()),
 });
 export type SyncPayload = v.InferOutput<typeof SyncPayloadSchema>;
 
@@ -385,6 +387,8 @@ export const PresenterStateSchema = v.object({
   seq: v.optional(v.number()),
   /** Named voters' answers, kept out of the counts */
   voterAnswers: v.optional(v.record(v.string(), v.record(v.string(), v.string()))),
+  /** This tab's claim to control, so a reload keeps it */
+  control: v.optional(v.number()),
 });
 
 export const SubmittedAnswersSchema = v.record(v.string(), v.string());

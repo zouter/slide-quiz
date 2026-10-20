@@ -85,6 +85,22 @@ const CONNECTION_GRACE_MS = 5_000;
 const RECONNECT_FIRST_MS = 1_000;
 const RECONNECT_MAX_MS = 3_000;
 
+/**
+ * Which presenter tab moves the phones: nobody has taken control ("none"),
+ * this tab has ("mine"), or another tab has ("other").
+ */
+export type ControlState = "none" | "mine" | "other";
+
+/** A presenter tab's claim to control: higher numbers win, ties go to the larger session id. */
+interface Claim {
+  n: number;
+  sessionId: string;
+}
+
+function outranks(a: Claim, b: Claim): boolean {
+  return a.n > b.n || (a.n === b.n && a.sessionId > b.sessionId);
+}
+
 /** Delay before reconnect attempt `attempts` (0-based): 0.5-1s, 1-2s, then 1.5-3s. */
 export function reconnectDelay(attempts: number): number {
   const ceiling = Math.min(RECONNECT_FIRST_MS * 2 ** attempts, RECONNECT_MAX_MS);
@@ -235,6 +251,8 @@ export class QuizManager {
     audienceWarning: atom<string | null>(null),
     /** Presenter only: named voters' answers, shown beside the counts */
     voterAnswers: map<VoterAnswers>({}),
+    /** Presenter only: whether this tab, another one or none has taken control */
+    control: atom<ControlState>("none"),
   };
 
   constructor(config: QuizManagerConfig, historyWindow: number) {
@@ -460,9 +478,12 @@ export class PresenterQuizManager extends QuizManager {
   private groupQuizId: string | null = null;
   // Session ids of named voters, whose answers are shown, not counted
   private namedVoters = new Set<string>();
+  // The highest claim to control seen from any presenter tab, this one included
+  private claim: Claim | null = null;
 
   constructor(config: QuizManagerConfig) {
-    super(config, 0); // No history — presenter is source of truth
+    // The sync history only tells a newly opened tab whether another one has taken control.
+    super(config, 5 * 60_000);
 
     this.resultsChannel = this.cable.streamFrom(
       resultsStream(config.quizGroupId),
@@ -535,6 +556,20 @@ export class PresenterQuizManager extends QuizManager {
     // listen subscription → saveState → save + sendSync
   }
 
+  /**
+   * Make this tab the one phones follow. It claims control above every claim
+   * it has seen; another tab stops broadcasting once the claim reaches it,
+   * and phones then follow only the highest claim, so a forgotten window
+   * cannot move them.
+   */
+  takeControl(): void {
+    this.claim = { n: (this.claim?.n ?? 0) + 1, sessionId: this.sessionId };
+    this.onStage = true;
+    this.store.control.set("mine");
+    this.persistState();
+    this.sendSync();
+  }
+
   /** Clear the active question (called when leaving a quiz slide) */
   clearActiveQuestion(): void {
     if (this.store.activeQuestionId.get() === null) return;
@@ -551,7 +586,16 @@ export class PresenterQuizManager extends QuizManager {
   // ── Message Handlers ──
 
   protected override onSyncMessage(msg: unknown): void {
-    // Ignore other messages (presenter is source of truth, not a consumer of sync; a single presenter is assumed)
+    // The presenter is the source of truth: another tab's broadcast matters
+    // only for its claim to control, which silences this tab.
+    const { sessionId, control } = msg as Partial<SyncPayload>;
+    if (typeof sessionId !== "string" || sessionId === this.sessionId || typeof control !== "number") return;
+    const claim = { n: control, sessionId };
+    if (this.claim && !outranks(claim, this.claim)) return;
+    this.claim = claim;
+    this.store.control.set("other");
+    clearTimeout(this.syncTimer);
+    this.syncTimer = undefined;
   }
 
   protected override async onPresence(event?: PresenceEvent<unknown>): Promise<void> {
@@ -784,6 +828,7 @@ export class PresenterQuizManager extends QuizManager {
     clearTimeout(this.syncTimer);
     this.syncTimer = undefined;
     if (this.syncStopped || !this.onStage || this.syncRequest) return; // a running request plans the next one
+    if (this.store.control.get() === "other") return;
 
     const due = this.syncPendingGap !== undefined
       ? this.lastSyncAt + (this.syncFailures > 0 ? Math.max(this.syncPendingGap, SYNC_FAILING_GAP_MS) : this.syncPendingGap)
@@ -814,6 +859,7 @@ export class PresenterQuizManager extends QuizManager {
       questionIndex,
       totalCount: questions.length,
       seq: this.syncSeq,
+      control: this.store.control.get() === "mine" ? this.claim!.n : undefined,
     };
   }
 
@@ -909,6 +955,7 @@ export class PresenterQuizManager extends QuizManager {
           ),
           seq: this.syncSeq,
           voterAnswers: this.store.voterAnswers.get(),
+          control: this.store.control.get() === "mine" ? this.claim!.n : undefined,
         }),
       );
     } catch (e) {
@@ -932,6 +979,10 @@ export class PresenterQuizManager extends QuizManager {
       if (saved.seq) this.syncSeq = saved.seq;
       if (saved.results) this.store.results.set(saved.results);
       if (saved.voterAnswers) this.store.voterAnswers.set(saved.voterAnswers);
+      if (saved.control) {
+        this.claim = { n: saved.control, sessionId: this.sessionId };
+        this.store.control.set("mine");
+      }
       for (const [quizId, votes] of Object.entries(saved.sessionVotes ?? {})) {
         this.sessionVotes.set(quizId, new Map(Object.entries(votes)));
       }
@@ -946,6 +997,8 @@ export class PresenterQuizManager extends QuizManager {
 export class ParticipantQuizManager extends QuizManager {
   private onSyncThrottled: ReturnType<typeof throttle>;
   private lastSeq: { sessionId: string; seq: number } | undefined;
+  // The highest claim to control seen; once there is one, only its tab is followed
+  private claim: Claim | null = null;
   // Log the first state applied after each (re)connect: the line that tells
   // whether a phone actually got the current question.
   private awaitingState = true;
@@ -1030,6 +1083,15 @@ export class ParticipantQuizManager extends QuizManager {
 
     if (sync.sessionId === this.sessionId) {
       console.log("[slide-quiz:participant] ignoring own sync (same sessionId)");
+      return;
+    }
+
+    // Once a presenter tab has taken control, only the highest claim is followed.
+    if (sync.control !== undefined) {
+      const claim = { n: sync.control, sessionId: sync.sessionId };
+      if (this.claim && outranks(this.claim, claim)) return;
+      this.claim = claim;
+    } else if (this.claim) {
       return;
     }
 

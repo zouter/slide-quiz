@@ -4,6 +4,10 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.7 (zouter fork)
+
+- "Take control" button: phones follow only the deck window that took control last; the serverless functions pass the claim on.
+
 ## 0.7.2-plane.6 (zouter fork)
 
 - Thumbs questions (`data-quiz-type="thumbs"`): a thumbs up, down or neither per option; results ranked by ups minus downs. The serverless functions accept the new type.

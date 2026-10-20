@@ -350,6 +350,10 @@ Add `data-quiz-own` to a multi-select question to let people add up to three ans
 
 List `voters` in the config (`{ sessionId, name, photo }`) to show some people's answers by portrait instead of counting them, for instance the speakers'. Their phones open the audience page with that session id: pass it as `sessionId` to `createParticipantUI`, for instance from a link parameter. An audience-group option whose label is a named voter's session id lets them pick themselves instead: whoever picks it answers as that voter, also for what they answered before, and the option stays out of the legend and the split. Results bars show the portrait beside each option they picked (with the place they gave, on rank questions, or their thumb, on thumbs questions); a plane shows it at their point.
 
+#### Taking control (this fork)
+
+Every window that opens the deck can move the phones. A "Take control" button at the bottom right makes one window the one they follow: every other window stops broadcasting once it hears the claim, and phones from then on ignore any window but the one with the latest claim. Click it in another window to move control there.
+
 #### Audience groups (this fork)
 
 Add `groups` to the config to ask one question, before the others, whose answer puts each respondent in a group. Results bars are then split by group and plane dots coloured by group, each in its group's colour, with a legend. The group question has no slide of its own: keep it open with `data-quiz-open` on the opening slides, and put a join QR code on them with an element marked `data-quiz-join` (its value is the QR size in pixels).
