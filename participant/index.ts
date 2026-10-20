@@ -177,10 +177,22 @@ export function createParticipantUI(
     return parsed.success ? { ...parsed.output } : {};
   }
 
-  function decodeRank(answer: string | null): string[] | undefined {
+  function rankAnswer(answer: string | null): string[] | undefined {
     if (!answer) return undefined;
     const parsed = v.safeParse(RankAnswerSchema, answer);
     return parsed.success ? parsed.output : undefined;
+  }
+
+  /**
+   * A stored ranking, fitted to the options the section asks now: options no
+   * longer asked drop out and new ones join at the end, so every option on
+   * screen has a place and can be moved.
+   */
+  function decodeRank(answer: string | null, section: HTMLElement): string[] | undefined {
+    const order = rankAnswer(answer);
+    if (!order) return undefined;
+    const labels = [...section.querySelectorAll<HTMLElement>(`.${CLS.rankItem}`)].map((item) => item.dataset.answer ?? "");
+    return [...order.filter((label) => labels.includes(label)), ...labels.filter((label) => !order.includes(label))];
   }
 
   /** A fresh random order, so the order shown does not suggest an answer. */
@@ -813,7 +825,7 @@ export function createParticipantUI(
       });
     } else if (section.dataset.quizType === "rank") {
       const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`)!;
-      rankOrders[q.quizId] ??= decodeRank(manager.getVotedAnswer(q.quizId)) ?? shuffled(q.options.map((o) => o.label));
+      rankOrders[q.quizId] ??= decodeRank(manager.getVotedAnswer(q.quizId), section) ?? shuffled(q.options.map((o) => o.label));
       renderRankOrder(q.quizId);
 
       for (const button of section.querySelectorAll<HTMLButtonElement>(".sq-participant__rank-move")) {
@@ -1067,7 +1079,7 @@ export function createParticipantUI(
     }
 
     if (section.dataset.quizType === "rank") {
-      const order = decodeRank(answer);
+      const order = decodeRank(answer, section);
       if (order) rankOrders[quizId] = order;
       renderRankOrder(quizId);
       showVotedRank(section, answer);
@@ -1110,7 +1122,7 @@ export function createParticipantUI(
   }
 
   function showVotedRank(section: HTMLElement, answer: string) {
-    showSubmitted(section, (decodeRank(answer) ?? []).map((l) => optionText(section, l)).join(" > "));
+    showSubmitted(section, (rankAnswer(answer) ?? []).map((l) => optionText(section, l)).join(" > "));
   }
 
   function showVotedThumbs(section: HTMLElement, answer: string) {

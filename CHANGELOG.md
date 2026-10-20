@@ -4,6 +4,10 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.15 (zouter fork)
+
+- A ranking given before the question's options changed fits them: options no longer asked drop out and new ones join at the end, where they can be moved like the others.
+
 ## 0.7.2-plane.14 (zouter fork)
 
 - Thumbs questions have a neutral button between down and up, pressed by default, so no option seems to ask for a choice.
