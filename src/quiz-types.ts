@@ -353,6 +353,8 @@ export const QuizManagerConfigSchema = v.object({
   onError: OnErrorSchema,
   /** Survey mode: a phone keeps its identity and answers across visits and ignores the presenter */
   survey: v.optional(v.boolean()),
+  /** With survey: the presenter's live questions still reach the phone */
+  live: v.optional(v.boolean()),
 });
 export type QuizManagerConfig = v.InferOutput<typeof QuizManagerConfigSchema>;
 
@@ -374,6 +376,11 @@ export const ParticipantConfigSchema = v.object({
    * answers on the device and never shows results.
    */
   survey: v.optional(v.boolean()),
+  /**
+   * With survey: the presenter's other questions are asked live, in a Live tab
+   * beside the survey's; the page switches to it when one opens.
+   */
+  live: v.optional(v.boolean()),
 });
 export type ParticipantConfig = v.InferOutput<typeof ParticipantConfigSchema>;
 

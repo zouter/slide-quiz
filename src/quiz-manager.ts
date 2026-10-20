@@ -1031,8 +1031,10 @@ export class PresenterQuizManager extends QuizManager {
 export class ParticipantQuizManager extends QuizManager {
   private onSyncThrottled: ReturnType<typeof throttle>;
   private lastSeq: { sessionId: string; seq: number } | undefined;
-  // Survey mode: the phone goes at its own pace, whatever the presenter shows
+  // Survey mode: the phone goes at its own pace, whatever the presenter shows,
+  // unless live questions are allowed too
   private survey: boolean;
+  private live: boolean;
   // The highest claim to control seen; once there is one, only its tab is followed
   private claim: Claim | null = null;
   // Log the first state applied after each (re)connect: the line that tells
@@ -1042,6 +1044,7 @@ export class ParticipantQuizManager extends QuizManager {
   constructor(config: QuizManagerConfig) {
     super(config, 5 * 60_000); // 5-min history window
     this.survey = config.survey ?? false;
+    this.live = config.live ?? false;
 
     // Stream history replays every broadcast of the last five minutes in one
     // burst, oldest first; applying only the burst's last message keeps an
@@ -1103,7 +1106,7 @@ export class ParticipantQuizManager extends QuizManager {
   // ── Message Handlers ──
 
   protected override onSyncMessage(msg: unknown): void {
-    if (this.survey) return;
+    if (this.survey && !this.live) return;
     console.log("[slide-quiz:participant] onSyncMessage received:", msg);
     const data = msg as Record<string, unknown>;
 
@@ -1176,6 +1179,8 @@ export class ParticipantQuizManager extends QuizManager {
     // Reset detection: clear submitted answer only when a quiz that
     // previously had votes is explicitly reset to total 0. Don't clear
     // when the quiz simply isn't in results yet (no votes received).
+    // A survey's answers are the phone's own record, whatever the presenter counts.
+    if (this.survey) return;
     for (const quizId of Object.keys(this.store.submitted.get())) {
       const quizResult = data.results[quizId];
       if (quizResult && quizResult.total === 0) {
@@ -1252,6 +1257,7 @@ export function getQuizParticipant(config: {
   endpoints?: Partial<QuizEndpoints>;
   onError?: QuizErrorHandler;
   survey?: boolean;
+  live?: boolean;
 }): ParticipantQuizManager {
   if (!participants.has(config.quizGroupId)) {
     participants.set(

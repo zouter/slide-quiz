@@ -42,7 +42,7 @@ export const SlideQuizConfigSchema = v.object({
   voters: v.optional(v.array(NamedVoterSchema)),
   /** Receives every error the engine detects. Wire to your own monitoring. */
   onError: v.optional(v.custom<QuizErrorHandler>((x) => typeof x === "function")),
-  /** Survey mode: answers come from a survey, so the take-control and reset buttons are left out */
+  /** Survey mode: answers come from a survey, so the reset button is left out */
   survey: v.optional(v.boolean()),
 });
 
@@ -360,7 +360,7 @@ export function createPlugin() {
       controlButton.tabIndex = -1;
       controlButton.addEventListener("mousedown", (e) => e.preventDefault());
       controlButton.addEventListener("click", () => manager?.takeControl());
-      if (!config.survey) revealEl.appendChild(controlButton);
+      revealEl.appendChild(controlButton);
       unsubs.push(
         manager.store.control.subscribe((state) => {
           controlButton.dataset.state = state;

@@ -147,6 +147,7 @@ export function createParticipantUI(
     endpoints: config.endpoints,
     onError: config.onError,
     survey: config.survey,
+    live: config.live,
   });
 
   // A survey shows no counts: people answer without seeing the results.
@@ -487,6 +488,51 @@ export function createParticipantUI(
     section.appendChild(submitBtn);
   }
 
+  // ── Survey and live tabs ──
+  // With live questions beside the survey, a tab bar switches between them;
+  // the Live tab shows the presenter's open question, or waits for one.
+  const surveyIds = new Set((config.questions ?? []).map((q) => q.quizId));
+  let tab: "survey" | "live" = "survey";
+  let liveQuizId: string | null = null;
+  const tabs = document.createElement("div");
+  tabs.className = "sq-participant__tabs";
+  tabs.setAttribute("role", "tablist");
+  const tabButton = (name: "survey" | "live", text: string) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sq-participant__tab";
+    button.dataset.tab = name;
+    button.setAttribute("role", "tab");
+    button.textContent = text;
+    button.addEventListener("click", () => {
+      tab = name;
+      refresh();
+    });
+    return button;
+  };
+  tabs.append(tabButton("survey", "Beforehand"), tabButton("live", "Live"));
+  if (config.survey && config.live) root.insertBefore(tabs, waiting);
+
+  /** Show the open tab: the survey step, or the live question. */
+  function refresh() {
+    if (!config.survey) return;
+    const liveOpen = liveQuizId !== null && !surveyIds.has(liveQuizId) && !!sectionEls[liveQuizId];
+    for (const button of tabs.querySelectorAll<HTMLElement>(".sq-participant__tab")) {
+      button.setAttribute("aria-selected", String(button.dataset.tab === tab));
+      button.classList.toggle("sq-participant__tab--alert", button.dataset.tab === "live" && liveOpen && tab !== "live");
+    }
+    if (tab === "survey") {
+      surveyNav.hidden = false;
+      showSurveyStep(surveyStep);
+      return;
+    }
+    surveyNav.hidden = true;
+    surveyDone.hidden = true;
+    showQuestion(liveOpen ? liveQuizId : null);
+    waitingTitle.textContent = "Waiting for the next live question\u2026";
+    waitingHint.textContent = "The presenter will open it during the talk.";
+  }
+
   // ── Survey: the questions in turn, with Back and Next ──
   // A section counts as touched once someone works its controls; Next then
   // sends a change they have not submitted, but never an untouched default
@@ -699,7 +745,8 @@ export function createParticipantUI(
 
     // The active quiz id can arrive one sync before its question. The id does
     // not change when the question lands, so show it now that its section exists.
-    if (currentActiveQuizId) showQuestion(currentActiveQuizId);
+    if (config.survey) refresh();
+    else if (currentActiveQuizId) showQuestion(currentActiveQuizId);
   }
 
   function bindClickHandlers(q: QuestionPayload, section: HTMLElement) {
@@ -1114,6 +1161,7 @@ export function createParticipantUI(
     renderQuestionSections(config.questions);
     if (config.survey) startSurvey();
   }
+  refresh();
 
   // ── Sync timeout — detect when connected but no quiz data arrives ──
   let syncTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -1166,9 +1214,18 @@ export function createParticipantUI(
     manager.store.questions.subscribe(qs => {
       if (qs.length > 0) onSyncReceived();
       if (!config.questions && qs.length > 0) renderQuestionSections([...qs]);
+      // Live questions beside a survey come from the presenter.
+      else if (config.live && qs.length > 0) renderQuestionSections(qs.filter((q) => !surveyIds.has(q.quizId)));
     }),
     manager.store.activeQuestionId.subscribe(id => {
-      if (config.survey) return;
+      if (config.survey) {
+        // A newly opened live question brings the phone to the Live tab.
+        const opened = id !== null && id !== liveQuizId && !surveyIds.has(id);
+        liveQuizId = id;
+        if (opened) tab = "live";
+        refresh();
+        return;
+      }
       if (id) onSyncReceived();
       showQuestion(id);
     }),

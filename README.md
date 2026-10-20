@@ -356,7 +356,7 @@ Every window that opens the deck can move the phones. A small dot at the bottom 
 
 #### Surveys (this fork)
 
-Pass `survey: true` and the `questions` to `createParticipantUI` to let people answer before the talk at their own pace: one question at a time with Back and Next, their identity and answers kept on the device (localStorage), no results shown, and the presenter's live state ignored. Next sends a change they made but did not submit. Store the answers in your answer function, load them into the deck with `getQuizPresenter(config).ingestAnswers(answers)`, and pass `survey: true` in the plugin config to leave out the take-control and reset buttons. The connected count under results is a `.sq-results__connected` span, to hide where nobody is connected live.
+Pass `survey: true` and the `questions` to `createParticipantUI` to let people answer before the talk at their own pace: one question at a time with Back and Next, their identity and answers kept on the device (localStorage), no results shown, and the presenter's live state ignored. Next sends a change they made but did not submit. Store the answers in your answer function, load them into the deck with `getQuizPresenter(config).ingestAnswers(answers)`, and pass `survey: true` in the plugin config to leave out the reset button. Add `live: true` to ask some questions live as well: the page then has a Beforehand and a Live tab, the Live tab shows the presenter's open question (one not in `questions`), and the page switches to it when one opens. The connected count under results is a `.sq-results__connected` span, to hide where nobody is connected live.
 
 #### Resetting answers (this fork)
 

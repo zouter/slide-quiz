@@ -444,6 +444,53 @@
   background: color-mix(in srgb, #dc2626 18%, transparent);
 }
 
+/* ── Survey and live tabs ── */
+
+.sq-participant__tabs {
+  display: flex;
+  gap: 0.25rem;
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.25rem;
+  border-radius: var(--sq-p-border-radius);
+  background: var(--sq-p-btn-border);
+}
+
+.sq-participant__tab {
+  position: relative;
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  border: 0;
+  border-radius: calc(var(--sq-p-border-radius) * 0.8);
+  background: transparent;
+  color: var(--sq-p-text);
+  font-family: var(--sq-p-font);
+  font-size: clamp(0.9rem, 3.5vw, 1.05rem);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sq-participant__tab[aria-selected="true"] {
+  background: var(--sq-p-bg);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 12%);
+}
+
+/* A live question is open while the phone shows the survey. */
+.sq-participant__tab--alert::after {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.7rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--sq-p-accent);
+  content: "";
+}
+
+.sq-participant__survey-nav[hidden] {
+  display: none;
+}
+
 /* ── Survey: Back and Next ── */
 
 .sq-participant__survey-nav {

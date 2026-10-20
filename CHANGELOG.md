@@ -4,6 +4,10 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.12 (zouter fork)
+
+- Survey with live questions (`live: true`): a Beforehand and a Live tab; a newly opened live question brings the phone to the Live tab. The take-control dot shows in survey mode too.
+
 ## 0.7.2-plane.11 (zouter fork)
 
 - Survey mode: a self-paced questionnaire with Back and Next that keeps a phone's identity and answers on the device and shows no results; `ingestAnswers` counts answers stored elsewhere.
