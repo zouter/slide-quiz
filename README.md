@@ -354,6 +354,10 @@ List `voters` in the config (`{ sessionId, name, photo }`) to show some people's
 
 Every window that opens the deck can move the phones. A small dot at the bottom right ("Take control" on hover) makes one window the one they follow: every other window stops broadcasting once it hears the claim, and phones from then on ignore any window but the one with the latest claim. Click it in another window to move control there.
 
+#### Resetting answers (this fork)
+
+Answers survive a reload of the presenter's window. A faint ↺ beside the control dot forgets them all after asking: the counts, the named voters' answers and the audience groups; phones can then answer every question again.
+
 #### Audience groups (this fork)
 
 Add `groups` to the config to ask one question, before the others, whose answer puts each respondent in a group. Results bars are then split by group and plane dots coloured by group, each in its group's colour, with a legend. The group question has no slide of its own: keep it open with `data-quiz-open` on the opening slides, and put a join QR code on them with an element marked `data-quiz-join` (its value is the QR size in pixels).

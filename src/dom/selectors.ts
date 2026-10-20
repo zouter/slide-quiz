@@ -41,6 +41,8 @@ export const CLS = {
   syncError: "sq-sync-error",
   /** The button that makes this deck window the one phones follow */
   control: "sq-control",
+  /** The button that forgets every answer */
+  reset: "sq-reset",
   /** The error banner as a small pill; removed when the presenter clicks it */
   syncErrorCompact: "sq-sync-error--compact",
 

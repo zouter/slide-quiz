@@ -4,6 +4,11 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.10 (zouter fork)
+
+- A reset button beside the control dot forgets every answer; phones can answer again.
+- The control dot is a little larger, and visible before any window takes control (its grey no longer depends on the deck's text colour).
+
 ## 0.7.2-plane.9 (zouter fork)
 
 - Answers of one's own on thumbs questions (`data-quiz-own`), counted with a thumbs up.

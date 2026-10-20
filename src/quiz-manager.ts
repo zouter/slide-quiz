@@ -570,6 +570,19 @@ export class PresenterQuizManager extends QuizManager {
     this.sendSync();
   }
 
+  /**
+   * Forget every answer: the counts, the named voters' answers and the
+   * audience groups. Each question goes out with no answers, which tells the
+   * phones to let people answer again.
+   */
+  resetResults(): void {
+    this.sessionVotes.clear();
+    this.store.voterAnswers.set({});
+    this.store.results.set(Object.fromEntries(this.store.questions.get().map((q) => [q.quizId, { votes: {}, total: 0 }])));
+    this.persistState();
+    this.sendSync();
+  }
+
   /** Clear the active question (called when leaving a quiz slide) */
   clearActiveQuestion(): void {
     if (this.store.activeQuestionId.get() === null) return;

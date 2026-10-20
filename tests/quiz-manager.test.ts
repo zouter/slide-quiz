@@ -657,6 +657,28 @@ describe("QuizManager — Presenter mode", () => {
     });
   });
 
+  describe("reset", () => {
+    it("forgets every answer and sends each question out with none, so phones can answer again", () => {
+      const mgr = createPresenter();
+      mgr.setQuestions([
+        { quizId: "who", question: "Who are you?", type: "choice", options: [{ label: "phd", text: "PhD" }] },
+        { quizId: "q1", question: "?", type: "choice", options: [{ label: "A", text: "A" }] },
+      ]);
+      mgr.setGroupQuiz("who");
+      mgr.setNamedVoters(["voter:martin"]);
+      resultsMessageHandler({ quizId: "who", answer: "phd", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "q1", answer: "A", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "q1", answer: "A", sessionId: "voter:martin" });
+
+      mgr.resetResults();
+      resultsMessageHandler({ quizId: "q1", answer: "A", sessionId: "v1" });
+
+      expect(mgr.store.results.get()).toEqual({ who: { votes: {}, total: 0 }, q1: { votes: { A: 1 }, total: 1 } });
+      expect(mgr.getGroupBreakdown("q1")).toEqual({ A: { "": 1 } });
+      expect(mgr.store.voterAnswers.get()).toEqual({});
+    });
+  });
+
   describe("named voters", () => {
     it("records their answers apart and keeps them out of the counts", () => {
       const mgr = createPresenter();

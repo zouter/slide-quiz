@@ -370,6 +370,20 @@ export function createPlugin() {
         }),
       );
 
+      // Answers are kept across reloads of the presenter's window; this
+      // forgets them all, after asking. Small, beside the control dot.
+      const resetButton = document.createElement("button");
+      resetButton.className = CLS.reset;
+      resetButton.setAttribute("data-sq-injected", "");
+      resetButton.tabIndex = -1;
+      resetButton.textContent = "\u21BA";
+      resetButton.title = "Reset all quiz answers";
+      resetButton.addEventListener("mousedown", (e) => e.preventDefault());
+      resetButton.addEventListener("click", () => {
+        if (window.confirm("Reset all quiz answers? Phones can then answer every question again.")) manager?.resetResults();
+      });
+      revealEl.appendChild(resetButton);
+
       // Connection problems come first: without a WebSocket nothing else matters.
       // The slides are on the projector, so the banner starts as a small pill
       // and shows the full message only when the presenter clicks it.
