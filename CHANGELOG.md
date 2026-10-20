@@ -4,6 +4,10 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.14 (zouter fork)
+
+- Thumbs questions have a neutral button between down and up, pressed by default, so no option seems to ask for a choice.
+
 ## 0.7.2-plane.13 (zouter fork)
 
 - Named voters count: their answers are counted once per voter, as respondents without an audience group, and still shown by portrait.

@@ -336,7 +336,7 @@ Set `data-quiz-type="rank"`: each person puts every option in order, starting fr
 
 #### Thumbs questions (this fork)
 
-Set `data-quiz-type="thumbs"`: each person gives every option a thumbs up, a thumbs down or neither (the default), and submits. With `data-quiz-own`, people can add answers of their own, which count with a thumbs up and show as chips with their count. Results bars grow thumbs down to the left and thumbs up to the right, each as a share of respondents, and stand in order of thumbs up minus thumbs down.
+Set `data-quiz-type="thumbs"`: each person gives every option a thumbs up, a thumbs down or neutral (pressed by default, so no option asks for a choice), and submits. With `data-quiz-own`, people can add answers of their own, which count with a thumbs up and show as chips with their count. Results bars grow thumbs down to the left and thumbs up to the right, each as a share of respondents, and stand in order of thumbs up minus thumbs down.
 
 #### Keeping a question open (this fork)
 

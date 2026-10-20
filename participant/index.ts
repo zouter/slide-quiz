@@ -406,7 +406,11 @@ export function createParticipantUI(
     section.appendChild(submitBtn);
   }
 
-  /** One row of a thumbs question; an answer of one's own has only a thumbs up. */
+  /**
+   * One row of a thumbs question: down, neutral (pressed until a thumb is
+   * given, so no option asks for a choice) and up. An answer of one's own has
+   * only a thumbs up.
+   */
   function thumbsItem(label: string, optionText: string, own: boolean): HTMLElement {
     const item = document.createElement("li");
     item.className = "sq-participant__thumbs-item";
@@ -417,7 +421,7 @@ export function createParticipantUI(
     const thumb = (mark: number, symbol: string, name: string) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `${CLS.thumb} sq-participant__thumb--${mark > 0 ? "up" : "down"}`;
+      button.className = `${CLS.thumb} sq-participant__thumb--${mark > 0 ? "up" : mark < 0 ? "down" : "neutral"}`;
       button.dataset.thumb = String(mark);
       button.textContent = symbol;
       button.setAttribute("aria-label", `${name} for ${optionText}`);
@@ -425,7 +429,7 @@ export function createParticipantUI(
       return button;
     };
     item.append(text);
-    if (!own) item.append(thumb(-1, "\u{1F44E}", "Thumbs down"));
+    if (!own) item.append(thumb(-1, "\u{1F44E}", "Thumbs down"), thumb(0, "–", "Neutral"));
     item.append(thumb(1, "\u{1F44D}", "Thumbs up"));
     return item;
   }
@@ -448,7 +452,8 @@ export function createParticipantUI(
     }
     for (const button of section.querySelectorAll<HTMLButtonElement>(`.${CLS.thumb}`)) {
       const label = button.closest<HTMLElement>("[data-answer]")?.dataset.answer ?? "";
-      button.setAttribute("aria-pressed", String(marks[label] === Number(button.dataset.thumb)));
+      const mark = Number(button.dataset.thumb);
+      button.setAttribute("aria-pressed", String(mark === 0 ? !(label in marks) : marks[label] === mark));
     }
     const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`);
     if (submitBtn) submitBtn.disabled = encodeThumbsAnswer(marks) === manager.getVotedAnswer(quizId);
@@ -764,15 +769,16 @@ export function createParticipantUI(
         else showStatus(section, "Not sent yet. Tap Submit to update your thumbs.");
       };
 
-      // A thumb toggles: tapping the one already set makes the option neutral
-      // again. One listener for the list, so rows of one's own added later work too.
+      // A thumb toggles: tapping the one already set, or neutral, makes the
+      // option neutral again. One listener for the list, so rows of one's own
+      // added later work too.
       section.querySelector(`.${CLS.thumbsList}`)!.addEventListener("click", (event) => {
         const button = (event.target as Element).closest<HTMLButtonElement>(`.${CLS.thumb}`);
         const label = button?.closest<HTMLElement>("[data-answer]")?.dataset.answer;
         if (!button || !label) return;
         const marks = thumbsMarks[q.quizId];
         const mark = Number(button.dataset.thumb);
-        if (marks[label] === mark) delete marks[label];
+        if (mark === 0 || marks[label] === mark) delete marks[label];
         else marks[label] = mark;
         changed();
       });

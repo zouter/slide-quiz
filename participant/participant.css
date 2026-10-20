@@ -444,6 +444,16 @@
   background: color-mix(in srgb, #dc2626 18%, transparent);
 }
 
+.sq-participant__thumb--neutral {
+  color: var(--sq-p-text);
+  font-weight: 700;
+}
+
+.sq-participant__thumb--neutral[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--sq-p-text) 40%, transparent);
+  background: color-mix(in srgb, var(--sq-p-text) 8%, transparent);
+}
+
 /* ── Survey and live tabs ── */
 
 .sq-participant__tabs {
