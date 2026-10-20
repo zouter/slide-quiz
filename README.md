@@ -352,7 +352,7 @@ List `voters` in the config (`{ sessionId, name, photo }`) to show some people's
 
 #### Taking control (this fork)
 
-Every window that opens the deck can move the phones. A "Take control" button at the bottom right makes one window the one they follow: every other window stops broadcasting once it hears the claim, and phones from then on ignore any window but the one with the latest claim. Click it in another window to move control there.
+Every window that opens the deck can move the phones. A small dot at the bottom right ("Take control" on hover) makes one window the one they follow: every other window stops broadcasting once it hears the claim, and phones from then on ignore any window but the one with the latest claim. Click it in another window to move control there.
 
 #### Audience groups (this fork)
 

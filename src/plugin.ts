@@ -350,7 +350,8 @@ export function createPlugin() {
       );
 
       // The window the presenter presents from takes control; every other
-      // window then stops moving the phones. Never focused, like the banner.
+      // window then stops moving the phones. A small dot that names itself on
+      // hover, never focused, like the banner.
       const controlButton = document.createElement("button");
       controlButton.className = CLS.control;
       controlButton.setAttribute("data-sq-injected", "");
@@ -361,7 +362,7 @@ export function createPlugin() {
       unsubs.push(
         manager.store.control.subscribe((state) => {
           controlButton.dataset.state = state;
-          controlButton.textContent = state === "mine" ? "\u25CF In control" : "Take control";
+          controlButton.textContent = state === "mine" ? "In control" : "Take control";
           controlButton.title =
             state === "mine" ? "Phones follow this window"
             : state === "other" ? "Another window moves the phones; click to take over"

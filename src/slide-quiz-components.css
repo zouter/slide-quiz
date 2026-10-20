@@ -369,34 +369,48 @@
 }
 
 /* On the projected slide: a small pill; clicking it shows the full message */
-/* Take control: bottom right, beside the deck's own controls. */
+/*
+ * Take control: a small dot at the bottom right, beside the deck's own
+ * controls, grey until a window takes control, green in that window and amber
+ * in the others. Its label shows only on hover.
+ */
 .sq-control {
+  --sq-control-dot: color-mix(in srgb, var(--sq-text) 30%, transparent);
   position: fixed;
   right: 7.5rem;
-  bottom: 1rem;
+  bottom: 1.4rem;
   z-index: 100;
-  padding: 0.3rem 0.8rem;
-  border: 1px solid var(--sq-option-border);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem;
+  border: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--sq-text) 6%, transparent);
+  background: none;
   color: var(--sq-text-muted);
   font-family: var(--sq-font);
-  font-size: 0.85rem;
+  font-size: 0;
   cursor: pointer;
-  opacity: 0.8;
+  opacity: 0.5;
 }
 
-.sq-control[data-state="mine"] {
-  border-color: #16a34a;
-  color: #16a34a;
+.sq-control::before {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--sq-control-dot);
+  content: "";
 }
 
-.sq-control[data-state="other"] {
-  border-color: #d97706;
-  background: color-mix(in srgb, #d97706 15%, transparent);
-  color: #b45309;
+.sq-control:hover {
+  padding: 0.2rem 0.6rem 0.2rem 0.4rem;
+  background: color-mix(in srgb, var(--sq-text) 6%, transparent);
+  font-size: 0.75rem;
   opacity: 1;
 }
+
+.sq-control[data-state="mine"] { --sq-control-dot: #16a34a; }
+.sq-control[data-state="other"] { --sq-control-dot: #d97706; }
 
 @media print {
   .sq-control {

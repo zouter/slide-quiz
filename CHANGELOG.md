@@ -4,6 +4,10 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.8 (zouter fork)
+
+- The Take control button is a small dot that shows its label on hover.
+
 ## 0.7.2-plane.7 (zouter fork)
 
 - "Take control" button: phones follow only the deck window that took control last; the serverless functions pass the claim on.
