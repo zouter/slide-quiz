@@ -348,7 +348,7 @@ Add `data-quiz-own` to a multi-select question to let people add up to three ans
 
 #### Named voters (this fork)
 
-List `voters` in the config (`{ sessionId, name, photo }`) to show some people's answers by portrait instead of counting them, for instance the speakers'. Their phones open the audience page with that session id: pass it as `sessionId` to `createParticipantUI`, for instance from a link parameter. An audience-group option whose label is a named voter's session id lets them pick themselves instead: whoever picks it answers as that voter, also for what they answered before, and the option stays out of the legend and the split. Results bars show the portrait beside each option they picked (with the place they gave, on rank questions, or their thumb, on thumbs questions); a plane shows it at their point.
+List `voters` in the config (`{ sessionId, name, photo }`) to show some people's answers by portrait, for instance the speakers'; they also count, once per voter, as respondents without an audience group. Their phones open the audience page with that session id: pass it as `sessionId` to `createParticipantUI`, for instance from a link parameter. An audience-group option whose label is a named voter's session id lets them pick themselves instead: whoever picks it answers as that voter, also for what they answered before, and the option stays out of the legend and the split. Results bars show the portrait beside each option they picked (with the place they gave, on rank questions, or their thumb, on thumbs questions); a plane shows it at their point.
 
 #### Taking control (this fork)
 

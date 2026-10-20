@@ -85,8 +85,9 @@ export type GroupDef = GroupsConfig["options"][number];
 /**
  * Named voters (for instance the speakers): their phones open the audience page
  * with a fixed session id, or they pick the audience-group option whose label is
- * that session id. Their answers are kept out of the counts, and the results
- * show their portrait on what they chose.
+ * that session id. Their answers count like anyone's, once per voter, and the
+ * results also show their portrait on what they chose; in a split by audience
+ * group they count as respondents without a group.
  */
 export const NamedVoterSchema = v.object({
   sessionId: v.pipe(v.string(), v.minLength(1)),
@@ -400,7 +401,7 @@ export const PresenterStateSchema = v.object({
   sessionVotes: v.optional(v.record(v.string(), v.record(v.string(), SessionVoteSchema))),
   /** Sequence number of the last sync broadcast, so it keeps increasing after a reload */
   seq: v.optional(v.number()),
-  /** Named voters' answers, kept out of the counts */
+  /** Named voters' answers, shown by portrait (they are counted as well) */
   voterAnswers: v.optional(v.record(v.string(), v.record(v.string(), v.string()))),
   /** This tab's claim to control, so a reload keeps it */
   control: v.optional(v.number()),

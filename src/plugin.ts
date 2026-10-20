@@ -68,7 +68,7 @@ function withAccent(quizUrl: string | undefined, accent: string): string | undef
   return url.toString();
 }
 
-/** The audience groups results are split by; a named voter picked as a group shows by portrait instead. */
+/** The audience groups results are split by; a named voter picked as a group shows by portrait, and counts without a group. */
 function countedGroups(config: SlideQuizConfig): GroupDef[] | undefined {
   const voters = new Set(config.voters?.map((voter) => voter.sessionId));
   return config.groups?.options.filter((group) => !voters.has(group.label));

@@ -697,7 +697,7 @@ describe("QuizManager — Presenter mode", () => {
   });
 
   describe("named voters", () => {
-    it("records their answers apart and keeps them out of the counts", () => {
+    it("shows their answers by portrait and counts them once, whichever phone answered", () => {
       const mgr = createPresenter();
       mgr.setQuestions([{ quizId: "q1", question: "?", type: "choice", options: [{ label: "A", text: "A" }, { label: "B", text: "B" }] }]);
       mgr.setNamedVoters(["voter:martin"]);
@@ -705,7 +705,7 @@ describe("QuizManager — Presenter mode", () => {
       resultsMessageHandler({ quizId: "q1", answer: "B", sessionId: "voter:martin" });
       resultsMessageHandler({ quizId: "q1", answer: "A", sessionId: "voter:martin" });
 
-      expect(mgr.getQuizState("q1")).toEqual({ votes: { A: 1 }, total: 1 });
+      expect(mgr.getQuizState("q1")).toEqual({ votes: { A: 2 }, total: 2 });
       expect(mgr.store.voterAnswers.get()).toEqual({ q1: { "voter:martin": "A" } });
     });
 
@@ -722,9 +722,12 @@ describe("QuizManager — Presenter mode", () => {
       resultsMessageHandler({ quizId: "who", answer: "voter:martin", sessionId: "v1" });
       resultsMessageHandler({ quizId: "q2", answer: "A", sessionId: "v1" });
 
-      expect(mgr.getQuizState("q1")).toEqual({ votes: {}, total: 0 });
-      expect(mgr.getQuizState("q2")).toEqual({ votes: {}, total: 0 });
-      expect(mgr.store.voterAnswers.get()).toEqual({ q1: { "voter:martin": "B" }, q2: { "voter:martin": "A" } });
+      resultsMessageHandler({ quizId: "q2", answer: "B", sessionId: "voter:martin" });
+
+      expect(mgr.getQuizState("q1")).toEqual({ votes: { B: 1 }, total: 1 });
+      expect(mgr.getQuizState("q2")).toEqual({ votes: { B: 1 }, total: 1 });
+      expect(mgr.getGroupBreakdown("q2")).toEqual({ B: { "": 1 } });
+      expect(mgr.store.voterAnswers.get()).toEqual({ q1: { "voter:martin": "B" }, q2: { "voter:martin": "B" } });
     });
   });
 

@@ -251,7 +251,7 @@ export class QuizManager {
     connectionError: atom<string | null>(null),
     /** Presenter only: phones run an audience page older than the deck */
     audienceWarning: atom<string | null>(null),
-    /** Presenter only: named voters' answers, shown beside the counts */
+    /** Presenter only: named voters' answers, shown by portrait as well as counted */
     voterAnswers: map<VoterAnswers>({}),
     /** Presenter only: whether this tab, another one or none has taken control */
     control: atom<ControlState>("none"),
@@ -480,7 +480,7 @@ export class PresenterQuizManager extends QuizManager {
   private sessionVotes = new Map<string, Map<string, SessionVote>>();
   // The question whose answer puts each respondent in an audience group
   private groupQuizId: string | null = null;
-  // Session ids of named voters, whose answers are shown, not counted
+  // Session ids of named voters, whose answers are counted once each and shown by portrait
   private namedVoters = new Set<string>();
   // The highest claim to control seen from any presenter tab, this one included
   private claim: Claim | null = null;
@@ -525,7 +525,7 @@ export class PresenterQuizManager extends QuizManager {
     this.sendSync();
   }
 
-  /** Name the voters whose answers are shown beside the results instead of counted. */
+  /** Name the voters whose answers are shown by portrait on the results, as well as counted. */
   setNamedVoters(sessionIds: string[]): void {
     this.namedVoters = new Set(sessionIds);
   }
@@ -710,6 +710,7 @@ export class PresenterQuizManager extends QuizManager {
       const vote = quizId === this.groupQuizId ? undefined : quizVotes.get(sessionId);
       if (!vote) continue;
       quizVotes.delete(sessionId);
+      quizVotes.set(voter, vote);
       this.store.voterAnswers.setKey(quizId, { ...this.store.voterAnswers.get()[quizId], [voter]: vote.answer });
       this.recount(quizId);
     }
@@ -775,8 +776,9 @@ export class PresenterQuizManager extends QuizManager {
       return;
     }
 
-    // The audience-group answer itself is counted, since it is what makes a
-    // respondent a named voter.
+    // A named voter's answer is shown by portrait and counted once, under the
+    // voter, whichever phone gave it. The audience-group answer is counted
+    // under the phone, since it is what makes a respondent a named voter.
     const voter = quizId === this.groupQuizId ? (this.namedVoters.has(sessionId) ? sessionId : null) : this.voterOf(sessionId);
     if (voter) {
       const voters = this.store.voterAnswers.get()[quizId] ?? {};
@@ -784,15 +786,15 @@ export class PresenterQuizManager extends QuizManager {
         this.store.voterAnswers.setKey(quizId, { ...voters, [voter]: data.answer });
         this.persistState();
       }
-      return;
     }
+    const respondent = voter ?? sessionId;
 
     if (!this.sessionVotes.has(quizId)) {
       this.sessionVotes.set(quizId, new Map());
     }
     const quizVotes = this.sessionVotes.get(quizId)!;
-    const previousKeys = quizVotes.get(sessionId)?.keys;
-    quizVotes.set(sessionId, { answer: data.answer, keys });
+    const previousKeys = quizVotes.get(respondent)?.keys;
+    quizVotes.set(respondent, { answer: data.answer, keys });
     if (quizId === this.groupQuizId && this.namedVoters.has(data.answer)) this.adoptVoter(sessionId, data.answer);
 
     if (previousKeys && JSON.stringify(previousKeys) === JSON.stringify(keys)) return; // Same answer — no-op
