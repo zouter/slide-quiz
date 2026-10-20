@@ -608,3 +608,50 @@
 .sq-own-answer b {
   color: var(--sq-accent);
 }
+
+/* Thumbs: thumbs down grow left and thumbs up right from the middle line. */
+.sq-result-bar__track--thumbs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  background: none;
+}
+
+.sq-result-bar__half {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  background: var(--sq-bar-track);
+}
+
+.sq-result-bar__half:first-child {
+  justify-content: flex-end;
+  border-radius: 0.35rem 0 0 0.35rem;
+}
+
+.sq-result-bar__half:last-child {
+  border-radius: 0 0.35rem 0.35rem 0;
+}
+
+.sq-results[data-quiz-type="thumbs"] .sq-result-bar__stats {
+  white-space: nowrap;
+}
+
+.sq-result-bar__fill--down {
+  height: 100%;
+  background: color-mix(in srgb, #dc2626 60%, transparent);
+  transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sq-result-bar__fill--down:has(.sq-result-bar__segment) {
+  display: flex;
+  flex-direction: row-reverse;
+  overflow: hidden;
+  background: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sq-result-bar__fill--down {
+    transition: none;
+  }
+}

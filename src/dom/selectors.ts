@@ -18,6 +18,8 @@ export const CLS = {
   resultBar: "sq-result-bar",
   resultBarCorrect: "sq-result-bar--correct",
   resultBarFill: "sq-result-bar__fill",
+  /** The thumbs-down part of a thumbs bar; its thumbs-up part is resultBarFill */
+  resultBarFillDown: "sq-result-bar__fill--down",
   /** One audience group's part of a bar */
   resultBarSegment: "sq-result-bar__segment",
   groupLegend: "sq-groups-legend",

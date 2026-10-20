@@ -43,6 +43,9 @@ import {
   RankAnswerSchema,
   encodeRankAnswer,
   RANK_HINT,
+  ThumbsAnswerSchema,
+  encodeThumbsAnswer,
+  THUMBS_HINT,
   ownAnswer,
   isOwnAnswer,
   OWN_HINT,
@@ -160,6 +163,14 @@ export function createParticipantUI(
   const planeSelections: Record<string, { x: number; y: number }> = {};
   // Rank: the order currently on screen, per quiz (option labels, first = most important)
   const rankOrders: Record<string, string[]> = {};
+  // Thumbs: the thumb currently set per option on screen, per quiz (1 up, -1 down; absent = neutral)
+  const thumbsMarks: Record<string, Record<string, number>> = {};
+
+  function decodeThumbs(answer: string | null): Record<string, number> {
+    if (!answer) return {};
+    const parsed = v.safeParse(ThumbsAnswerSchema, answer);
+    return parsed.success ? { ...parsed.output } : {};
+  }
 
   function decodeRank(answer: string | null): string[] | undefined {
     if (!answer) return undefined;
@@ -199,6 +210,7 @@ export function createParticipantUI(
     text: "Edit it and submit again to change your answer.",
     plane: "Tap elsewhere and submit again to move your point.",
     rank: "Reorder and submit again to change your answer.",
+    thumbs: "Change your thumbs and submit again to update them.",
   };
 
   function showStatus(section: HTMLElement, text: string) {
@@ -389,6 +401,56 @@ export function createParticipantUI(
     section.appendChild(submitBtn);
   }
 
+  /** Show each option's thumb and enable Submit when the thumbs differ from the vote. */
+  function renderThumbs(quizId: string) {
+    const section = sectionEls[quizId];
+    if (!section) return;
+    const marks = thumbsMarks[quizId] ?? {};
+    for (const button of section.querySelectorAll<HTMLButtonElement>(`.${CLS.thumb}`)) {
+      const label = button.closest<HTMLElement>("[data-answer]")?.dataset.answer ?? "";
+      button.setAttribute("aria-pressed", String(marks[label] === Number(button.dataset.thumb)));
+    }
+    const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`);
+    if (submitBtn) submitBtn.disabled = encodeThumbsAnswer(marks) === manager.getVotedAnswer(quizId);
+  }
+
+  function renderThumbsInput(q: QuestionPayload, section: HTMLElement) {
+    const hint = document.createElement("p");
+    hint.className = "sq-participant__hint";
+    hint.textContent = q.hint ?? THUMBS_HINT;
+    section.appendChild(hint);
+
+    const list = document.createElement("ul");
+    list.className = CLS.thumbsList;
+    for (const opt of q.options) {
+      const item = document.createElement("li");
+      item.className = "sq-participant__thumbs-item";
+      item.dataset.answer = opt.label;
+      const text = document.createElement("span");
+      text.className = CLS.btnText;
+      text.textContent = opt.text;
+      const thumb = (mark: number, symbol: string, name: string) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `${CLS.thumb} sq-participant__thumb--${mark > 0 ? "up" : "down"}`;
+        button.dataset.thumb = String(mark);
+        button.textContent = symbol;
+        button.setAttribute("aria-label", `${name} for ${opt.text}`);
+        button.setAttribute("aria-pressed", "false");
+        return button;
+      };
+      item.append(text, thumb(-1, "\u{1F44E}", "Thumbs down"), thumb(1, "\u{1F44D}", "Thumbs up"));
+      list.appendChild(item);
+    }
+    section.appendChild(list);
+
+    const submitBtn = document.createElement("button");
+    submitBtn.type = "button";
+    submitBtn.className = `${CLS.submit} sq-participant__submit--multi`;
+    submitBtn.textContent = "Submit";
+    section.appendChild(submitBtn);
+  }
+
   function renderQuestionSections(questions: QuestionPayload[]) {
     for (const q of questions) {
       if (renderedQuizIds.has(q.quizId)) continue;
@@ -423,6 +485,8 @@ export function createParticipantUI(
         renderPlaneInput(q, section);
       } else if (q.type === "rank") {
         renderRankInput(q, section);
+      } else if (q.type === "thumbs") {
+        renderThumbsInput(q, section);
       } else if (isText) {
         const inputWrapper = document.createElement("div");
         inputWrapper.className = "sq-participant__input-wrapper";
@@ -536,7 +600,43 @@ export function createParticipantUI(
 
   function bindClickHandlers(q: QuestionPayload, section: HTMLElement) {
 
-    if (section.dataset.quizType === "rank") {
+    if (section.dataset.quizType === "thumbs") {
+      const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`)!;
+      thumbsMarks[q.quizId] ??= decodeThumbs(manager.getVotedAnswer(q.quizId));
+      renderThumbs(q.quizId);
+
+      // A thumb toggles: tapping the one already set makes the option neutral again.
+      for (const button of section.querySelectorAll<HTMLButtonElement>(`.${CLS.thumb}`)) {
+        button.addEventListener("click", () => {
+          const label = button.closest<HTMLElement>("[data-answer]")?.dataset.answer;
+          if (!label) return;
+          const marks = thumbsMarks[q.quizId];
+          const mark = Number(button.dataset.thumb);
+          if (marks[label] === mark) delete marks[label];
+          else marks[label] = mark;
+          renderThumbs(q.quizId);
+
+          const voted = manager.getVotedAnswer(q.quizId);
+          if (!voted) showStatus(section, "");
+          else if (encodeThumbsAnswer(marks) === voted) showVotedThumbs(section, voted);
+          else showStatus(section, "Not sent yet. Tap Submit to update your thumbs.");
+        });
+      }
+
+      submitBtn.addEventListener("click", async () => {
+        const answer = encodeThumbsAnswer(thumbsMarks[q.quizId]);
+        if (answer === manager.getVotedAnswer(q.quizId)) return;
+
+        submitBtn.disabled = true;
+        showStatus(section, "Sending...");
+
+        const ok = await manager.submitAnswer(q.quizId, answer);
+
+        if (ok) showVotedThumbs(section, answer);
+        else showSendError(section, q.quizId);
+        renderThumbs(q.quizId);
+      });
+    } else if (section.dataset.quizType === "rank") {
       const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`)!;
       rankOrders[q.quizId] ??= decodeRank(manager.getVotedAnswer(q.quizId)) ?? shuffled(q.options.map((o) => o.label));
       renderRankOrder(q.quizId);
@@ -782,6 +882,13 @@ export function createParticipantUI(
     if (!section) return;
     const isText = section.dataset.quizType === "text";
 
+    if (section.dataset.quizType === "thumbs") {
+      thumbsMarks[quizId] = decodeThumbs(answer);
+      renderThumbs(quizId);
+      showVotedThumbs(section, answer);
+      return;
+    }
+
     if (section.dataset.quizType === "rank") {
       const order = decodeRank(answer);
       if (order) rankOrders[quizId] = order;
@@ -829,6 +936,13 @@ export function createParticipantUI(
     showSubmitted(section, (decodeRank(answer) ?? []).map((l) => optionText(section, l)).join(" > "));
   }
 
+  function showVotedThumbs(section: HTMLElement, answer: string) {
+    const marks = Object.entries(decodeThumbs(answer));
+    const list = (mark: number) => marks.filter(([, m]) => m === mark).map(([l]) => optionText(section, l)).join(", ");
+    const parts = [[1, "\u{1F44D}"], [-1, "\u{1F44E}"]].filter(([mark]) => list(mark as number)).map(([mark, symbol]) => `${symbol} ${list(mark as number)}`);
+    showSubmitted(section, parts.length ? parts.join(" \u00b7 ") : "No thumbs");
+  }
+
   function showVotedMulti(section: HTMLElement, answer: string) {
     showSubmitted(section, decodeMulti(answer).map((l) => optionText(section, l)).join(", "));
   }
@@ -837,7 +951,10 @@ export function createParticipantUI(
     const section = sectionEls[quizId];
     if (!section) return;
 
-    if (section.dataset.quizType === "rank") {
+    if (section.dataset.quizType === "thumbs") {
+      thumbsMarks[quizId] = {};
+      renderThumbs(quizId);
+    } else if (section.dataset.quizType === "rank") {
       const question = currentQuestions.find((q) => q.quizId === quizId);
       rankOrders[quizId] = shuffled(question?.options.map((o) => o.label) ?? rankOrders[quizId] ?? []);
       renderRankOrder(quizId);

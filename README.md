@@ -328,11 +328,15 @@ For a two-axis question, set `data-quiz-type="plane"` and name the four axis end
 </section>
 ```
 
-Plane and rank questions need the serverless functions from this fork, which accept those types. Size the plane on slides with `--sq-plane-size` and its dots with `--sq-plane-point`.
+Plane, rank and thumbs questions need the serverless functions from this fork, which accept those types. Size the plane on slides with `--sq-plane-size` and its dots with `--sq-plane-point`.
 
 #### Rank questions (this fork)
 
 Set `data-quiz-type="rank"`: each person puts every option in order, starting from a random order on their phone. The first place earns n − 1 points and the last none; results bars show each option's share of the highest possible score.
+
+#### Thumbs questions (this fork)
+
+Set `data-quiz-type="thumbs"`: each person gives every option a thumbs up, a thumbs down or neither (the default), and submits. Results bars grow thumbs down to the left and thumbs up to the right, each as a share of respondents, and stand in order of thumbs up minus thumbs down.
 
 #### Keeping a question open (this fork)
 
@@ -344,7 +348,7 @@ Add `data-quiz-own` to a multi-select question to let people add up to three ans
 
 #### Named voters (this fork)
 
-List `voters` in the config (`{ sessionId, name, photo }`) to show some people's answers by portrait instead of counting them, for instance the speakers'. Their phones open the audience page with that session id: pass it as `sessionId` to `createParticipantUI`, for instance from a link parameter. Results bars show the portrait beside each option they picked (with the place they gave, on rank questions); a plane shows it at their point.
+List `voters` in the config (`{ sessionId, name, photo }`) to show some people's answers by portrait instead of counting them, for instance the speakers'. Their phones open the audience page with that session id: pass it as `sessionId` to `createParticipantUI`, for instance from a link parameter. An audience-group option whose label is a named voter's session id lets them pick themselves instead: whoever picks it answers as that voter, also for what they answered before, and the option stays out of the legend and the split. Results bars show the portrait beside each option they picked (with the place they gave, on rank questions, or their thumb, on thumbs questions); a plane shows it at their point.
 
 #### Audience groups (this fork)
 

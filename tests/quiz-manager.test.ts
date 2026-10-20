@@ -561,6 +561,31 @@ describe("QuizManager — Presenter mode", () => {
     });
   });
 
+  describe("thumbs questions", () => {
+    function thumbsPresenter() {
+      const mgr = createPresenter();
+      const options = [{ label: "A", text: "A" }, { label: "B", text: "B" }, { label: "C", text: "C" }];
+      mgr.setQuestions([{ quizId: "t1", question: "?", type: "thumbs", options }]);
+      return mgr;
+    }
+
+    it("counts ups and downs per option, and an all-neutral answer as a respondent", () => {
+      const mgr = thumbsPresenter();
+      resultsMessageHandler({ quizId: "t1", answer: '{"A":1,"B":-1}', sessionId: "v1" });
+      resultsMessageHandler({ quizId: "t1", answer: '{"A":1,"X":1}', sessionId: "v2" });
+      resultsMessageHandler({ quizId: "t1", answer: "{}", sessionId: "v3" });
+
+      expect(mgr.getQuizState("t1")).toEqual({ votes: { "A+": 2, "B-": 1 }, total: 3 });
+    });
+
+    it("drops thumbs that are not up or down", () => {
+      const mgr = thumbsPresenter();
+      resultsMessageHandler({ quizId: "t1", answer: '{"A":2}', sessionId: "v1" });
+
+      expect(mgr.getQuizState("t1")).toEqual({ votes: {}, total: 0 });
+    });
+  });
+
   describe("audience groups", () => {
     function groupedPresenter() {
       const mgr = createPresenter();
@@ -635,6 +660,24 @@ describe("QuizManager — Presenter mode", () => {
 
       expect(mgr.getQuizState("q1")).toEqual({ votes: { A: 1 }, total: 1 });
       expect(mgr.store.voterAnswers.get()).toEqual({ q1: { "voter:martin": "A" } });
+    });
+
+    it("include whoever picks them as their audience group, with what they answered before", () => {
+      const mgr = createPresenter();
+      mgr.setQuestions([
+        { quizId: "who", question: "Who are you?", type: "choice", options: [{ label: "phd", text: "PhD" }, { label: "voter:martin", text: "Martin" }] },
+        { quizId: "q1", question: "?", type: "choice", options: [{ label: "A", text: "A" }, { label: "B", text: "B" }] },
+        { quizId: "q2", question: "?", type: "choice", options: [{ label: "A", text: "A" }, { label: "B", text: "B" }] },
+      ]);
+      mgr.setGroupQuiz("who");
+      mgr.setNamedVoters(["voter:martin"]);
+      resultsMessageHandler({ quizId: "q1", answer: "B", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "who", answer: "voter:martin", sessionId: "v1" });
+      resultsMessageHandler({ quizId: "q2", answer: "A", sessionId: "v1" });
+
+      expect(mgr.getQuizState("q1")).toEqual({ votes: {}, total: 0 });
+      expect(mgr.getQuizState("q2")).toEqual({ votes: {}, total: 0 });
+      expect(mgr.store.voterAnswers.get()).toEqual({ q1: { "voter:martin": "B" }, q2: { "voter:martin": "A" } });
     });
   });
 

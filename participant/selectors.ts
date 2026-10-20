@@ -20,4 +20,6 @@ export const CLS = {
   planeMarker: "sq-participant__plane-marker",
   rankList: "sq-participant__rank",
   rankItem: "sq-participant__rank-item",
+  thumbsList: "sq-participant__thumbs",
+  thumb: "sq-participant__thumb",
 } as const;

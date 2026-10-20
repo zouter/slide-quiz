@@ -387,6 +387,63 @@
   cursor: default;
 }
 
+/* ── Thumbs questions ── */
+
+.sq-participant__thumbs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sq-participant__thumbs-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  border: 1px solid var(--sq-p-btn-border);
+  border-radius: var(--sq-p-border-radius);
+  background: var(--sq-p-btn-bg);
+  color: var(--sq-p-text);
+  font-family: var(--sq-p-font);
+  font-size: clamp(0.95rem, 3.8vw, 1.15rem);
+}
+
+.sq-participant__thumbs-item .sq-participant__btn-text {
+  flex: 1;
+}
+
+.sq-participant__thumb {
+  width: 2.8rem;
+  height: 2.8rem;
+  flex: none;
+  border: 1px solid var(--sq-p-btn-border);
+  border-radius: calc(var(--sq-p-border-radius) * 0.7);
+  background: transparent;
+  font-size: 1.3rem;
+  cursor: pointer;
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.sq-participant__thumb[aria-pressed="true"] {
+  filter: none;
+  opacity: 1;
+}
+
+.sq-participant__thumb--up[aria-pressed="true"] {
+  border-color: #16a34a;
+  background: color-mix(in srgb, #16a34a 18%, transparent);
+}
+
+.sq-participant__thumb--down[aria-pressed="true"] {
+  border-color: #dc2626;
+  background: color-mix(in srgb, #dc2626 18%, transparent);
+}
+
 /* ── Answers of one's own ── */
 
 .sq-participant__own {

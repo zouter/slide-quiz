@@ -40,6 +40,8 @@ import {
   PlaneAnswerSchema,
   encodePlaneAnswer,
   RankAnswerSchema,
+  ThumbsAnswerSchema,
+  thumbsKey,
   rankPoints,
   ownAnswer,
   isOwnAnswer,
@@ -579,6 +581,16 @@ export class PresenterQuizManager extends QuizManager {
         if (order.length !== labels.length || !order.every((label) => labels.includes(label))) return null;
         return order.flatMap((label, i) => Array(rankPoints(i, order.length)).fill(label));
       }
+      case "thumbs": {
+        // One key per thumb on one of the question's own options; all neutral
+        // still counts the respondent.
+        const labels = new Set(question!.options.map((o) => o.label));
+        const parsed = v.safeParse(ThumbsAnswerSchema, answer);
+        if (!parsed.success) return null;
+        return Object.entries(parsed.output)
+          .filter(([label]) => labels.has(label))
+          .map(([label, mark]) => thumbsKey(label, mark));
+      }
       case "plane": {
         // Re-snap, so every point lands on the grid and the vote map stays bounded.
         const parsed = v.safeParse(PlaneAnswerSchema, answer);
@@ -605,6 +617,25 @@ export class PresenterQuizManager extends QuizManager {
       default:
         return [answer];
     }
+  }
+
+  /** The named voter a session answers as: its own fixed id, or the one it picked as its audience group. */
+  private voterOf(sessionId: string): string | null {
+    if (this.namedVoters.has(sessionId)) return sessionId;
+    const group = this.groupQuizId ? this.sessionVotes.get(this.groupQuizId)?.get(sessionId)?.answer : undefined;
+    return group !== undefined && this.namedVoters.has(group) ? group : null;
+  }
+
+  /** A respondent who picks a named voter as their group answers as that voter, also for what they answered before. */
+  private adoptVoter(sessionId: string, voter: string): void {
+    for (const [quizId, quizVotes] of this.sessionVotes) {
+      const vote = quizId === this.groupQuizId ? undefined : quizVotes.get(sessionId);
+      if (!vote) continue;
+      quizVotes.delete(sessionId);
+      this.store.voterAnswers.setKey(quizId, { ...this.store.voterAnswers.get()[quizId], [voter]: vote.answer });
+      this.recount(quizId);
+    }
+    this.persistState();
   }
 
   /** Rebuild one quiz's tally from the raw answers, if counting them again changes it. */
@@ -666,10 +697,13 @@ export class PresenterQuizManager extends QuizManager {
       return;
     }
 
-    if (this.namedVoters.has(sessionId)) {
+    // The audience-group answer itself is counted, since it is what makes a
+    // respondent a named voter.
+    const voter = quizId === this.groupQuizId ? (this.namedVoters.has(sessionId) ? sessionId : null) : this.voterOf(sessionId);
+    if (voter) {
       const voters = this.store.voterAnswers.get()[quizId] ?? {};
-      if (voters[sessionId] !== data.answer) {
-        this.store.voterAnswers.setKey(quizId, { ...voters, [sessionId]: data.answer });
+      if (voters[voter] !== data.answer) {
+        this.store.voterAnswers.setKey(quizId, { ...voters, [voter]: data.answer });
         this.persistState();
       }
       return;
@@ -681,6 +715,7 @@ export class PresenterQuizManager extends QuizManager {
     const quizVotes = this.sessionVotes.get(quizId)!;
     const previousKeys = quizVotes.get(sessionId)?.keys;
     quizVotes.set(sessionId, { answer: data.answer, keys });
+    if (quizId === this.groupQuizId && this.namedVoters.has(data.answer)) this.adoptVoter(sessionId, data.answer);
 
     if (previousKeys && JSON.stringify(previousKeys) === JSON.stringify(keys)) return; // Same answer — no-op
 

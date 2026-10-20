@@ -4,6 +4,11 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.6 (zouter fork)
+
+- Thumbs questions (`data-quiz-type="thumbs"`): a thumbs up, down or neither per option; results ranked by ups minus downs. The serverless functions accept the new type.
+- Named voters can pick themselves on the audience-group question, through an option labelled with their session id.
+
 ## 0.7.2-plane.5 (zouter fork)
 
 - Answers of one's own on multi-select questions (`data-quiz-own`); the serverless functions pass the flag on.

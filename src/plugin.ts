@@ -8,6 +8,7 @@ import * as v from "valibot";
 import type { QuestionPayload, PresenterQuizManager, QuizErrorHandler } from "./quiz-manager";
 import { getQuizPresenter, removeQuizPresenter } from "./quiz-manager";
 import { QuizEndpointsSchema, JsonQuizOptionsSchema, QuizTypeSchema, GroupsConfigSchema, NamedVoterSchema } from "./quiz-types";
+import type { GroupDef } from "./quiz-types";
 import { updateVoterMarks } from "./dom/render-voters";
 import { renderQR, displayUrl } from "./dom/render-qr";
 import { animateCount } from "./dom/animate";
@@ -65,6 +66,12 @@ function withAccent(quizUrl: string | undefined, accent: string): string | undef
   return url.toString();
 }
 
+/** The audience groups results are split by; a named voter picked as a group shows by portrait instead. */
+function countedGroups(config: SlideQuizConfig): GroupDef[] | undefined {
+  const voters = new Set(config.voters?.map((voter) => voter.sessionId));
+  return config.groups?.options.filter((group) => !voters.has(group.label));
+}
+
 export function createPlugin() {
   let deck: RevealApi | null = null;
   let config: SlideQuizConfig;
@@ -110,7 +117,7 @@ export function createPlugin() {
       animatedResults.add(resultsId);
       const state = manager.getQuizState(resultsId);
       const breakdown = manager.getGroupBreakdown(resultsId);
-      const groups = config.groups?.options;
+      const groups = countedGroups(config);
       const wordcloud = findWordcloud(slide, resultsId);
       const plane = findPlane(slide, resultsId);
       const voterAnswers = manager.store.voterAnswers.get()[resultsId];
@@ -265,13 +272,13 @@ export function createPlugin() {
           );
         } else if (resultType === "plane") {
           renderPromises.push(
-            renderPlane(slide, quizUrl, config.groups?.options).catch(
+            renderPlane(slide, quizUrl, countedGroups(config)).catch(
               (err) => console.warn("[slide-quiz] Failed to render plane slide:", err),
             ),
           );
         } else {
           renderPromises.push(
-            renderResults(slide, quizUrl, config.groups?.options).catch(
+            renderResults(slide, quizUrl, countedGroups(config)).catch(
               (err) => console.warn("[slide-quiz] Failed to render results slide:", err),
             ),
           );
@@ -322,7 +329,7 @@ export function createPlugin() {
             if (animatedResults.has(quizId)) {
               // A changed group answer changes every quiz's split, so all are redrawn.
               const breakdown = manager!.getGroupBreakdown(quizId);
-              const groups = config.groups?.options;
+              const groups = countedGroups(config);
               for (const el of findAllWordclouds(revealEl, quizId)) updateWordCloud(el, quizState);
               for (const el of findAllPlanes(revealEl, quizId)) updatePlane(el, quizState, breakdown, groups);
               for (const el of findAllResults(revealEl, quizId)) updateResultBars(el, quizState, breakdown, groups);

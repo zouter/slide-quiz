@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import type { VoteState, GroupDef, GroupCounts } from "../quiz-types";
-import { JsonQuizOptionsSchema, QuizTypeSchema, MULTI_RESULTS_NOTE, RANK_RESULTS_NOTE, AUDIENCE_LABELS, isOwnAnswer } from "../quiz-types";
+import { JsonQuizOptionsSchema, QuizTypeSchema, MULTI_RESULTS_NOTE, RANK_RESULTS_NOTE, THUMBS_RESULTS_NOTE, AUDIENCE_LABELS, isOwnAnswer, thumbsKey, thumbsScore } from "../quiz-types";
 import { html, type Child } from "./html";
 import { renderResultsQR } from "./render-results-qr";
 import { CLS } from "./selectors";
@@ -17,7 +17,8 @@ export async function renderResults(
   const quizId = slide.dataset.quizResults!;
   const question = slide.dataset.quizQuestion || "";
   const quizType = v.parse(QuizTypeSchema, slide.dataset.quizType);
-  const note = quizType === "multi" ? MULTI_RESULTS_NOTE : quizType === "rank" ? RANK_RESULTS_NOTE : null;
+  const notes: Partial<Record<string, string>> = { multi: MULTI_RESULTS_NOTE, rank: RANK_RESULTS_NOTE, thumbs: THUMBS_RESULTS_NOTE };
+  const note = notes[quizType] ?? null;
   const parsed = v.safeParse(JsonQuizOptionsSchema, slide.dataset.quizOptions);
   if (!parsed.success) {
     console.warn(`[slide-quiz] Invalid data-quiz-options on results "${quizId}"`);
@@ -43,9 +44,14 @@ export async function renderResults(
                   <span class="sq-result-bar__letter">${opt.label}</span>
                   <span class="sq-result-bar__text">${opt.text}</span>
                 </div>
-                <div class="sq-result-bar__track">
-                  <div class="${CLS.resultBarFill}" style="width: 0%"></div>
-                </div>
+                ${quizType === "thumbs"
+                  ? html`<div class="sq-result-bar__track sq-result-bar__track--thumbs">
+                      <div class="sq-result-bar__half"><div class="${CLS.resultBarFillDown}" style="width: 0%"></div></div>
+                      <div class="sq-result-bar__half"><div class="${CLS.resultBarFill}" style="width: 0%"></div></div>
+                    </div>`
+                  : html`<div class="sq-result-bar__track">
+                      <div class="${CLS.resultBarFill}" style="width: 0%"></div>
+                    </div>`}
                 <div class="sq-result-bar__stats">
                   <span class="${CLS.resultBarPct}">0%</span>
                   <span class="${CLS.resultBarCount}">0</span>
@@ -108,6 +114,45 @@ function barPercent(wrapper: HTMLElement, count: number, state: VoteState): numb
 }
 
 /**
+ * Thumbs bars: thumbs down grow left and thumbs up right from the middle, each
+ * as a share of respondents, and the bars stand in order of ups minus downs
+ * (ties keep the options' order). The stats show the net score and both counts.
+ */
+function updateThumbBars(
+  wrapper: HTMLElement,
+  state: VoteState,
+  breakdown: Record<string, GroupCounts> | undefined,
+  groups: GroupDef[] | undefined,
+  animate: boolean,
+): void {
+  const bars = [...wrapper.querySelectorAll<HTMLElement>(`.${CLS.resultBar}`)];
+  const score = (bar: HTMLElement) => thumbsScore(state.votes, bar.dataset.option || "");
+  // Negative orders keep the bars ahead of the line under them.
+  [...bars].sort((a, b) => score(b) - score(a)).forEach((bar, place) => { bar.style.order = String(place - bars.length); });
+  bars.forEach((bar, i) => {
+    const label = bar.dataset.option || "";
+    const parts: [string, string][] = [[CLS.resultBarFill, thumbsKey(label, 1)], [CLS.resultBarFillDown, thumbsKey(label, -1)]];
+    for (const [cls, key] of parts) {
+      const fill = bar.querySelector<HTMLElement>(`.${cls}`);
+      if (!fill) continue;
+      const pct = `${Math.round(((state.votes[key] || 0) / (state.total || 1)) * 100)}%`;
+      fillGroupSegments(fill, breakdown?.[key], groups);
+      if (animate) {
+        fill.style.transitionDelay = `${i * 0.15}s`;
+        requestAnimationFrame(() => { fill.style.width = pct; });
+      } else {
+        fill.style.width = pct;
+      }
+    }
+    const net = score(bar);
+    const pctEl = bar.querySelector<HTMLElement>(`.${CLS.resultBarPct}`);
+    const countEl = bar.querySelector<HTMLElement>(`.${CLS.resultBarCount}`);
+    if (pctEl) pctEl.textContent = net > 0 ? `+${net}` : String(net);
+    if (countEl) countEl.textContent = `\u{1F44D}${state.votes[thumbsKey(label, 1)] || 0} \u{1F44E}${state.votes[thumbsKey(label, -1)] || 0}`;
+  });
+}
+
+/**
  * Answers people added themselves, as chips with their count, most frequent first.
  */
 function updateOwnAnswers(wrapper: HTMLElement, state: VoteState): void {
@@ -140,6 +185,7 @@ export function updateResultBars(
 ): void {
   const bars = wrapper.querySelectorAll<HTMLElement>(`.${CLS.resultBar}`);
   updateTotal(wrapper, state);
+  if (wrapper.dataset.quizType === "thumbs") return updateThumbBars(wrapper, state, breakdown, groups, false);
 
   for (const bar of bars) {
     const key = bar.dataset.option || "";
@@ -175,6 +221,7 @@ export function animateResultBars(
 
   const bars = wrapper.querySelectorAll<HTMLElement>(`.${CLS.resultBar}`);
   updateTotal(wrapper, state);
+  if (wrapper.dataset.quizType === "thumbs") return updateThumbBars(wrapper, state, breakdown, groups, !prefersReducedMotion);
 
   let i = 0;
   for (const bar of bars) {

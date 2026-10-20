@@ -15,8 +15,9 @@ import * as v from "valibot";
  * - `text`: free text, word cloud results
  * - `plane`: place one point on two axes, scatter results
  * - `rank`: put all options in order, bars of the share of the highest possible score
+ * - `thumbs`: thumbs up, down or neither for every option, ranked by ups minus downs
  */
-export const QuizTypeSchema = v.optional(v.picklist(["choice", "multi", "text", "plane", "rank"]), "choice");
+export const QuizTypeSchema = v.optional(v.picklist(["choice", "multi", "text", "plane", "rank", "thumbs"]), "choice");
 export type QuizType = v.InferOutput<typeof QuizTypeSchema>;
 
 export const VoteStateSchema = v.object({
@@ -81,8 +82,9 @@ export type GroupDef = GroupsConfig["options"][number];
 
 /**
  * Named voters (for instance the speakers): their phones open the audience page
- * with a fixed session id, their answers are kept out of the counts, and the
- * results show their portrait on what they chose.
+ * with a fixed session id, or they pick the audience-group option whose label is
+ * that session id. Their answers are kept out of the counts, and the results
+ * show their portrait on what they chose.
  */
 export const NamedVoterSchema = v.object({
   sessionId: v.pipe(v.string(), v.minLength(1)),
@@ -228,6 +230,46 @@ export function encodeRankAnswer(labels: string[]): string {
 export function rankPoints(position: number, n: number): number {
   return n - 1 - position;
 }
+
+/**
+ * Pipeline: a thumbs answer as it travels in `AnswerPayload.answer` (a JSON
+ * object of option label → 1 for thumbs up, -1 for thumbs down; options left
+ * neutral are absent) → that object.
+ */
+export const ThumbsAnswerSchema = v.pipe(
+  v.string(),
+  v.rawTransform(({ dataset, addIssue, NEVER }) => {
+    try {
+      return JSON.parse(dataset.value);
+    } catch {
+      addIssue({ message: "Invalid JSON" });
+      return NEVER;
+    }
+  }),
+  v.record(v.string(), v.picklist([1, -1])),
+);
+
+/** Encode thumbs per option label (1 up, -1 down, 0 neutral) as a thumbs answer string. */
+export function encodeThumbsAnswer(thumbs: Record<string, number>): string {
+  const marked = Object.entries(thumbs).filter(([, mark]) => mark === 1 || mark === -1);
+  return JSON.stringify(Object.fromEntries(marked.sort(([a], [b]) => a.localeCompare(b))));
+}
+
+/** The vote key a thumb counts toward: the option label with + for up, - for down. */
+export function thumbsKey(label: string, mark: number): string {
+  return `${label}${mark > 0 ? "+" : "-"}`;
+}
+
+/** An option's thumbs up minus thumbs down. */
+export function thumbsScore(votes: Record<string, number>, label: string): number {
+  return (votes[thumbsKey(label, 1)] || 0) - (votes[thumbsKey(label, -1)] || 0);
+}
+
+/** Shown on thumbs question slides and on the audience page. */
+export const THUMBS_HINT = "Thumbs up or down for any of them";
+
+/** Shown on thumbs results slides. */
+export const THUMBS_RESULTS_NOTE = "Ranked by thumbs up minus thumbs down";
 
 /** Shown on rank question slides and on the audience page. */
 export const RANK_HINT = "Put them in order, most important first";
