@@ -627,13 +627,21 @@ export class PresenterQuizManager extends QuizManager {
       }
       case "thumbs": {
         // One key per thumb on one of the question's own options; all neutral
-        // still counts the respondent.
+        // still counts the respondent. Answers of one's own count with a thumbs
+        // up where the question allows them, tidied and capped as on multi-select.
         const labels = new Set(question!.options.map((o) => o.label));
         const parsed = v.safeParse(ThumbsAnswerSchema, answer);
         if (!parsed.success) return null;
-        return Object.entries(parsed.output)
-          .filter(([label]) => labels.has(label))
-          .map(([label, mark]) => thumbsKey(label, mark));
+        const entries = Object.entries(parsed.output);
+        const keys = entries.filter(([label]) => labels.has(label)).map(([label, mark]) => thumbsKey(label, mark));
+        if (question?.own) {
+          const own = entries
+            .filter(([label, mark]) => isOwnAnswer(label) && mark > 0)
+            .map(([label]) => ownAnswer(label.slice(1)))
+            .filter((key) => key !== null);
+          keys.push(...[...new Set(own)].slice(0, OWN_MAX_PER));
+        }
+        return keys;
       }
       case "plane": {
         // Re-snap, so every point lands on the grid and the vote map stays bounded.

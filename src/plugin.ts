@@ -231,7 +231,7 @@ export function createPlugin() {
         const quizType = v.parse(QuizTypeSchema, slide.dataset.quizType);
 
         const hint = questionHint(slide, quizType, config.hintText);
-        const own = quizType === "multi" && slide.dataset.quizOwn !== undefined ? true : undefined;
+        const own = (quizType === "multi" || quizType === "thumbs") && slide.dataset.quizOwn !== undefined ? true : undefined;
 
         if (quizType === "text") {
           allQuestions.push({ quizId, question, type: quizType, options: [], hint });
@@ -304,7 +304,7 @@ export function createPlugin() {
                   label: o.label,
                   text: o.text,
                 })),
-                own: resultType === "multi" && slide.dataset.quizOwn !== undefined ? true : undefined,
+                own: (resultType === "multi" || resultType === "thumbs") && slide.dataset.quizOwn !== undefined ? true : undefined,
               });
             }
           }

@@ -137,9 +137,11 @@ function updateThumbBars(
       if (!fill) continue;
       const pct = `${Math.round(((state.votes[key] || 0) / (state.total || 1)) * 100)}%`;
       fillGroupSegments(fill, breakdown?.[key], groups);
+      // The entrance waits a frame; a vote arriving meanwhile must not be undone.
+      fill.dataset.width = pct;
       if (animate) {
         fill.style.transitionDelay = `${i * 0.15}s`;
-        requestAnimationFrame(() => { fill.style.width = pct; });
+        requestAnimationFrame(() => { fill.style.width = fill.dataset.width!; });
       } else {
         fill.style.width = pct;
       }
@@ -185,6 +187,7 @@ export function updateResultBars(
 ): void {
   const bars = wrapper.querySelectorAll<HTMLElement>(`.${CLS.resultBar}`);
   updateTotal(wrapper, state);
+  updateOwnAnswers(wrapper, state);
   if (wrapper.dataset.quizType === "thumbs") return updateThumbBars(wrapper, state, breakdown, groups, false);
 
   for (const bar of bars) {
@@ -221,6 +224,7 @@ export function animateResultBars(
 
   const bars = wrapper.querySelectorAll<HTMLElement>(`.${CLS.resultBar}`);
   updateTotal(wrapper, state);
+  updateOwnAnswers(wrapper, state);
   if (wrapper.dataset.quizType === "thumbs") return updateThumbBars(wrapper, state, breakdown, groups, !prefersReducedMotion);
 
   let i = 0;
