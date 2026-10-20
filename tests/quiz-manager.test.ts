@@ -657,6 +657,23 @@ describe("QuizManager — Presenter mode", () => {
     });
   });
 
+  describe("answers collected elsewhere", () => {
+    it("count like live answers, a respondent's latest answer once", () => {
+      const mgr = createPresenter();
+      mgr.setQuestions([{ quizId: "q1", question: "?", type: "choice", options: [{ label: "A", text: "A" }, { label: "B", text: "B" }] }]);
+      mgr.ingestAnswers([
+        { quizId: "q1", answer: "A", sessionId: "v1" },
+        { quizId: "q1", answer: "B", sessionId: "v2" },
+      ]);
+      mgr.ingestAnswers([
+        { quizId: "q1", answer: "A", sessionId: "v1" },
+        { quizId: "q1", answer: "A", sessionId: "v2" },
+      ]);
+
+      expect(mgr.getQuizState("q1")).toEqual({ votes: { A: 2 }, total: 2 });
+    });
+  });
+
   describe("reset", () => {
     it("forgets every answer and sends each question out with none, so phones can answer again", () => {
       const mgr = createPresenter();

@@ -146,7 +146,11 @@ export function createParticipantUI(
     sessionId: config.sessionId,
     endpoints: config.endpoints,
     onError: config.onError,
+    survey: config.survey,
   });
+
+  // A survey shows no counts: people answer without seeing the results.
+  if (config.survey) stats.hidden = true;
 
   // Question sections (keyed by quizId)
   const sectionEls: Record<string, HTMLElement> = {};
@@ -481,6 +485,74 @@ export function createParticipantUI(
     submitBtn.className = `${CLS.submit} sq-participant__submit--multi`;
     submitBtn.textContent = "Submit";
     section.appendChild(submitBtn);
+  }
+
+  // ── Survey: the questions in turn, with Back and Next ──
+  // A section counts as touched once someone works its controls; Next then
+  // sends a change they have not submitted, but never an untouched default
+  // (such as a ranking's shuffled order).
+  let surveyStep = 0;
+  const surveyNav = document.createElement("div");
+  surveyNav.className = "sq-participant__survey-nav";
+  const backBtn = document.createElement("button");
+  backBtn.type = "button";
+  backBtn.className = "sq-participant__survey-back";
+  backBtn.textContent = "Back";
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.className = `${CLS.submit} sq-participant__survey-next`;
+  surveyNav.append(backBtn, nextBtn);
+  const surveyDone = document.createElement("div");
+  surveyDone.className = "sq-participant__survey-done";
+  surveyDone.innerHTML = "<p class=\"sq-participant__waiting-title\">Thank you!</p><p class=\"sq-participant__waiting-hint\">Your answers are saved. You can go back and change them until the talk.</p>";
+
+  function showSurveyStep(step: number) {
+    const questions = config.questions ?? [];
+    surveyStep = Math.max(0, Math.min(step, questions.length));
+    try {
+      localStorage.setItem(`quiz-survey-step-${config.quizGroupId}`, String(surveyStep));
+    } catch {
+      /* ignore */
+    }
+    const done = surveyStep === questions.length;
+    showQuestion(done ? null : questions[surveyStep].quizId);
+    if (!done) {
+      const num = sectionEls[questions[surveyStep].quizId]?.querySelector(".sq-participant__number");
+      if (num) num.textContent = `${surveyStep + 1} of ${questions.length}`;
+    }
+    waiting.style.display = "none";
+    surveyDone.hidden = !done;
+    backBtn.disabled = surveyStep === 0;
+    nextBtn.hidden = done;
+    nextBtn.textContent = surveyStep === questions.length - 1 ? "Finish" : "Next";
+    window.scrollTo({ top: 0 });
+  }
+
+  function startSurvey() {
+    root.insertBefore(surveyDone, footerEl);
+    root.insertBefore(surveyNav, footerEl);
+    for (const section of Object.values(sectionEls)) {
+      const touch = (event: Event) => {
+        if (!(event.target as Element).closest(`.${CLS.submit}`)) section.dataset.touched = "1";
+      };
+      section.addEventListener("click", touch);
+      section.addEventListener("input", touch);
+    }
+    backBtn.addEventListener("click", () => showSurveyStep(surveyStep - 1));
+    nextBtn.addEventListener("click", () => {
+      const quizId = config.questions?.[surveyStep]?.quizId;
+      const section = quizId ? sectionEls[quizId] : undefined;
+      const submit = section?.querySelector<HTMLButtonElement>(`.${CLS.submit}`);
+      if (section?.dataset.touched && submit && !submit.disabled) submit.click();
+      showSurveyStep(surveyStep + 1);
+    });
+    let saved = 0;
+    try {
+      saved = Number(localStorage.getItem(`quiz-survey-step-${config.quizGroupId}`)) || 0;
+    } catch {
+      /* ignore */
+    }
+    showSurveyStep(saved);
   }
 
   function renderQuestionSections(questions: QuestionPayload[]) {
@@ -905,7 +977,9 @@ export function createParticipantUI(
         // Update "Question X of Y" label
         const num = el.querySelector(".sq-participant__number");
         if (num) {
-          if (config.questions) {
+          if (config.survey) {
+            num.textContent = "";
+          } else if (config.questions) {
             const idx = config.questions.findIndex(q => q.quizId === id);
             num.textContent = `Question ${idx + 1} of ${config.questions.length}`;
           } else {
@@ -1038,6 +1112,7 @@ export function createParticipantUI(
   // If questions provided statically, render them now
   if (config.questions) {
     renderQuestionSections(config.questions);
+    if (config.survey) startSurvey();
   }
 
   // ── Sync timeout — detect when connected but no quiz data arrives ──
@@ -1093,6 +1168,7 @@ export function createParticipantUI(
       if (!config.questions && qs.length > 0) renderQuestionSections([...qs]);
     }),
     manager.store.activeQuestionId.subscribe(id => {
+      if (config.survey) return;
       if (id) onSyncReceived();
       showQuestion(id);
     }),

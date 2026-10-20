@@ -4,6 +4,10 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.11 (zouter fork)
+
+- Survey mode: a self-paced questionnaire with Back and Next that keeps a phone's identity and answers on the device and shows no results; `ingestAnswers` counts answers stored elsewhere.
+
 ## 0.7.2-plane.10 (zouter fork)
 
 - A reset button beside the control dot forgets every answer; phones can answer again.

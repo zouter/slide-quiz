@@ -444,6 +444,46 @@
   background: color-mix(in srgb, #dc2626 18%, transparent);
 }
 
+/* ── Survey: Back and Next ── */
+
+.sq-participant__survey-nav {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 28rem;
+}
+
+.sq-participant__survey-back {
+  padding: 0.85rem 1.2rem;
+  border: 1px solid var(--sq-p-btn-border);
+  border-radius: var(--sq-p-border-radius);
+  background: transparent;
+  color: var(--sq-p-text);
+  font-family: var(--sq-p-font);
+  font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sq-participant__survey-back:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.sq-participant__survey-next {
+  flex: 1;
+}
+
+.sq-participant__survey-done {
+  text-align: center;
+  padding: 3rem 0 1rem;
+}
+
+.sq-participant__survey-done[hidden],
+.sq-participant__survey-next[hidden] {
+  display: none;
+}
+
 /* ── Answers of one's own ── */
 
 .sq-participant__own {

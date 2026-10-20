@@ -228,6 +228,8 @@ export class QuizManager {
   protected sessionId: string;
   readonly endpoints: QuizEndpoints;
   protected unsubs: (() => void)[] = [];
+  // Where the phone's identity and answers are kept (see survey)
+  protected storage: Storage;
   private errorHandlers = new Set<QuizErrorHandler>();
   private connectionGraceId: ReturnType<typeof setTimeout> | undefined;
   private connectWatchdogId: ReturnType<typeof setInterval> | undefined;
@@ -257,6 +259,8 @@ export class QuizManager {
 
   constructor(config: QuizManagerConfig, historyWindow: number) {
     this.quizGroupId = config.quizGroupId;
+    // A survey runs over days, so the phone remembers who it is beyond this tab.
+    this.storage = config.survey ? localStorage : sessionStorage;
     this.sessionId = config.sessionId || this.getOrCreateSessionId();
     this.endpoints = { ...DEFAULT_ENDPOINTS, ...config.endpoints };
     if (config.onError) this.errorHandlers.add(config.onError);
@@ -453,10 +457,10 @@ export class QuizManager {
 
   private getOrCreateSessionId(): string {
     const key = `quiz-session-${this.quizGroupId}`;
-    let id = sessionStorage.getItem(key);
+    let id = this.storage.getItem(key);
     if (!id) {
       id = crypto.randomUUID();
-      sessionStorage.setItem(key, id);
+      this.storage.setItem(key, id);
     }
     return id;
   }
@@ -546,6 +550,15 @@ export class PresenterQuizManager extends QuizManager {
       }
     }
     return breakdown;
+  }
+
+  /**
+   * Count answers collected elsewhere, for instance stored by the answer
+   * function while people filled in a survey. Each goes the way a live answer
+   * does, so a respondent's latest answer per question counts once.
+   */
+  ingestAnswers(answers: AnswerPayload[]): void {
+    for (const answer of answers) this.onResultsMessage(answer);
   }
 
   /** Set the active question (called when slide enters viewport) */
@@ -1018,6 +1031,8 @@ export class PresenterQuizManager extends QuizManager {
 export class ParticipantQuizManager extends QuizManager {
   private onSyncThrottled: ReturnType<typeof throttle>;
   private lastSeq: { sessionId: string; seq: number } | undefined;
+  // Survey mode: the phone goes at its own pace, whatever the presenter shows
+  private survey: boolean;
   // The highest claim to control seen; once there is one, only its tab is followed
   private claim: Claim | null = null;
   // Log the first state applied after each (re)connect: the line that tells
@@ -1026,6 +1041,7 @@ export class ParticipantQuizManager extends QuizManager {
 
   constructor(config: QuizManagerConfig) {
     super(config, 5 * 60_000); // 5-min history window
+    this.survey = config.survey ?? false;
 
     // Stream history replays every broadcast of the last five minutes in one
     // burst, oldest first; applying only the burst's last message keeps an
@@ -1087,6 +1103,7 @@ export class ParticipantQuizManager extends QuizManager {
   // ── Message Handlers ──
 
   protected override onSyncMessage(msg: unknown): void {
+    if (this.survey) return;
     console.log("[slide-quiz:participant] onSyncMessage received:", msg);
     const data = msg as Record<string, unknown>;
 
@@ -1171,7 +1188,7 @@ export class ParticipantQuizManager extends QuizManager {
 
   private saveSubmitted(): void {
     try {
-      sessionStorage.setItem(
+      this.storage.setItem(
         `quiz-submitted-${this.quizGroupId}`,
         JSON.stringify(this.store.submitted.get()),
       );
@@ -1182,7 +1199,7 @@ export class ParticipantQuizManager extends QuizManager {
 
   private restoreSubmitted(): void {
     try {
-      const raw = sessionStorage.getItem(
+      const raw = this.storage.getItem(
         `quiz-submitted-${this.quizGroupId}`,
       );
       if (!raw) return;
@@ -1234,6 +1251,7 @@ export function getQuizParticipant(config: {
   sessionId?: string;
   endpoints?: Partial<QuizEndpoints>;
   onError?: QuizErrorHandler;
+  survey?: boolean;
 }): ParticipantQuizManager {
   if (!participants.has(config.quizGroupId)) {
     participants.set(

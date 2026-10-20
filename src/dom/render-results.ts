@@ -261,7 +261,7 @@ export function animateResultBars(
  * is a `CLS.online` span, which the plugin's online subscription keeps current.
  */
 export function audienceLine(): DocumentFragment {
-  return html`<span class="${CLS.online}">0</span> ${AUDIENCE_LABELS.connected} · <span class="${CLS.resultsResponded}">0</span> ${AUDIENCE_LABELS.responded}`;
+  return html`<span class="sq-results__connected"><span class="${CLS.online}">0</span> ${AUDIENCE_LABELS.connected} · </span><span class="${CLS.resultsResponded}">0</span> ${AUDIENCE_LABELS.responded}`;
 }
 
 /** Set the responded count in the line under results. */

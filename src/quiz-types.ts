@@ -351,6 +351,8 @@ export const QuizManagerConfigSchema = v.object({
   sessionId: v.optional(v.string()),
   endpoints: v.optional(v.partial(QuizEndpointsSchema)),
   onError: OnErrorSchema,
+  /** Survey mode: a phone keeps its identity and answers across visits and ignores the presenter */
+  survey: v.optional(v.boolean()),
 });
 export type QuizManagerConfig = v.InferOutput<typeof QuizManagerConfigSchema>;
 
@@ -366,6 +368,12 @@ export const ParticipantConfigSchema = v.object({
   /** CSS colour for buttons and highlights, usually the deck's accent */
   accent: v.optional(v.string()),
   onError: OnErrorSchema,
+  /**
+   * Survey mode: people go through `questions` at their own pace with Back
+   * and Next, before or during the talk; the page keeps their identity and
+   * answers on the device and never shows results.
+   */
+  survey: v.optional(v.boolean()),
 });
 export type ParticipantConfig = v.InferOutput<typeof ParticipantConfigSchema>;
 

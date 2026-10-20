@@ -42,6 +42,8 @@ export const SlideQuizConfigSchema = v.object({
   voters: v.optional(v.array(NamedVoterSchema)),
   /** Receives every error the engine detects. Wire to your own monitoring. */
   onError: v.optional(v.custom<QuizErrorHandler>((x) => typeof x === "function")),
+  /** Survey mode: answers come from a survey, so the take-control and reset buttons are left out */
+  survey: v.optional(v.boolean()),
 });
 
 export type SlideQuizConfig = v.InferOutput<typeof SlideQuizConfigSchema>;
@@ -358,7 +360,7 @@ export function createPlugin() {
       controlButton.tabIndex = -1;
       controlButton.addEventListener("mousedown", (e) => e.preventDefault());
       controlButton.addEventListener("click", () => manager?.takeControl());
-      revealEl.appendChild(controlButton);
+      if (!config.survey) revealEl.appendChild(controlButton);
       unsubs.push(
         manager.store.control.subscribe((state) => {
           controlButton.dataset.state = state;
@@ -382,7 +384,7 @@ export function createPlugin() {
       resetButton.addEventListener("click", () => {
         if (window.confirm("Reset all quiz answers? Phones can then answer every question again.")) manager?.resetResults();
       });
-      revealEl.appendChild(resetButton);
+      if (!config.survey) revealEl.appendChild(resetButton);
 
       // Connection problems come first: without a WebSocket nothing else matters.
       // The slides are on the projector, so the banner starts as a small pill

@@ -354,6 +354,10 @@ List `voters` in the config (`{ sessionId, name, photo }`) to show some people's
 
 Every window that opens the deck can move the phones. A small dot at the bottom right ("Take control" on hover) makes one window the one they follow: every other window stops broadcasting once it hears the claim, and phones from then on ignore any window but the one with the latest claim. Click it in another window to move control there.
 
+#### Surveys (this fork)
+
+Pass `survey: true` and the `questions` to `createParticipantUI` to let people answer before the talk at their own pace: one question at a time with Back and Next, their identity and answers kept on the device (localStorage), no results shown, and the presenter's live state ignored. Next sends a change they made but did not submit. Store the answers in your answer function, load them into the deck with `getQuizPresenter(config).ingestAnswers(answers)`, and pass `survey: true` in the plugin config to leave out the take-control and reset buttons. The connected count under results is a `.sq-results__connected` span, to hide where nobody is connected live.
+
 #### Resetting answers (this fork)
 
 Answers survive a reload of the presenter's window. A faint ↺ beside the control dot forgets them all after asking: the counts, the named voters' answers and the audience groups; phones can then answer every question again.
