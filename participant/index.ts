@@ -671,7 +671,8 @@ export function createParticipantUI(
       const isText = (q.type || "choice") === "text";
       const isMulti = q.type === "multi";
 
-      if (isText && q.hint) {
+      // A hint of the question's own under it; the other types place theirs with their input.
+      if (q.hint && (isText || (q.type ?? "choice") === "choice")) {
         const hint = document.createElement("p");
         hint.className = "sq-participant__hint";
         hint.textContent = q.hint;

@@ -4,6 +4,10 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.17 (zouter fork)
+
+- A single-choice question shows its `hint` under the question, as text questions do.
+
 ## 0.7.2-plane.16 (zouter fork)
 
 - Answers people add to a thumbs question can be voted on by everyone: with an `own` endpoint listing them, phones show them as rows with a thumbs up, and every thumbs up counts.
