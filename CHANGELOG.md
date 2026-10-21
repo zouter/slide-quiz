@@ -4,9 +4,9 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## 0.7.2-plane.19 (zouter fork)
+## 0.7.2-plane.20 (zouter fork)
 
-- The plugin reads `data-quiz-own` on text questions too, so the presenter counts their several answers.
+- The plugin reads `data-quiz-own` on text questions too, so the presenter counts their several answers (0.7.2-plane.19 did not build).
 
 ## 0.7.2-plane.18 (zouter fork)
 

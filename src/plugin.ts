@@ -291,7 +291,7 @@ export function createPlugin() {
         if (!knownQuizIds.has(quizId)) {
           const question = slide.dataset.quizQuestion || "";
           if (resultType === "text") {
-            allQuestions.push({ quizId, question, type: resultType, options: [] });
+            allQuestions.push({ quizId, question, type: resultType, options: [], own: slide.dataset.quizOwn !== undefined ? true : undefined });
           } else {
             const optionsParsed = v.safeParse(
               JsonQuizOptionsSchema,
@@ -306,7 +306,7 @@ export function createPlugin() {
                   label: o.label,
                   text: o.text,
                 })),
-                own: (resultType === "multi" || resultType === "thumbs" || resultType === "text") && slide.dataset.quizOwn !== undefined ? true : undefined,
+                own: (resultType === "multi" || resultType === "thumbs") && slide.dataset.quizOwn !== undefined ? true : undefined,
               });
             }
           }
