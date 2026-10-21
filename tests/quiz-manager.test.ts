@@ -586,6 +586,15 @@ describe("QuizManager — Presenter mode", () => {
       expect(mgr.getQuizState("t2")).toEqual({ votes: { "A-": 1, "+better coffee": 1 }, total: 1 });
     });
 
+    it("counts agreement with answers others added, beyond the few one may add oneself", () => {
+      const mgr = createPresenter();
+      mgr.setQuestions([{ quizId: "t2", question: "?", type: "thumbs", own: true, options: [{ label: "A", text: "A" }] }]);
+      resultsMessageHandler({ quizId: "t2", answer: '{"+a":1,"+b":1,"+c":1,"+d":1,"+e":1}', sessionId: "v1" });
+      resultsMessageHandler({ quizId: "t2", answer: '{"+a":1}', sessionId: "v2" });
+
+      expect(mgr.getQuizState("t2")).toEqual({ votes: { "+a": 2, "+b": 1, "+c": 1, "+d": 1, "+e": 1 }, total: 2 });
+    });
+
     it("drops thumbs that are not up or down", () => {
       const mgr = thumbsPresenter();
       resultsMessageHandler({ quizId: "t1", answer: '{"A":2}', sessionId: "v1" });

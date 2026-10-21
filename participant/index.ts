@@ -420,13 +420,15 @@ export function createParticipantUI(
 
   /**
    * One row of a thumbs question: down, neutral (pressed until a thumb is
-   * given, so no option asks for a choice) and up. An answer of one's own has
-   * only a thumbs up.
+   * given, so no option asks for a choice) and up. An answer one just added
+   * has only a thumbs up, and goes when it is taken away; one added by anyone
+   * that the own endpoint lists (shared) has neutral and up.
    */
-  function thumbsItem(label: string, optionText: string, own: boolean): HTMLElement {
+  function thumbsItem(label: string, optionText: string, kind: "option" | "own" | "shared"): HTMLElement {
     const item = document.createElement("li");
     item.className = "sq-participant__thumbs-item";
     item.dataset.answer = label;
+    item.dataset.kind = kind;
     const text = document.createElement("span");
     text.className = CLS.btnText;
     text.textContent = optionText;
@@ -441,9 +443,38 @@ export function createParticipantUI(
       return button;
     };
     item.append(text);
-    if (!own) item.append(thumb(-1, "\u{1F44E}", "Thumbs down"), thumb(0, "–", "Neutral"));
+    if (kind === "option") item.append(thumb(-1, "\u{1F44E}", "Thumbs down"));
+    if (kind !== "own") item.append(thumb(0, "–", "Neutral"));
     item.append(thumb(1, "\u{1F44D}", "Thumbs up"));
     return item;
+  }
+
+  // When the own endpoint was last asked, per quiz.
+  const sharedAsked: Record<string, number> = {};
+
+  /** Add the answers others added as rows to vote on; one's own just added become such rows too once listed. */
+  async function loadShared(quizId: string) {
+    const list = sectionEls[quizId]?.querySelector<HTMLElement>(`.${CLS.thumbsList}`);
+    if (!manager.endpoints.own || !list || Date.now() - (sharedAsked[quizId] ?? 0) < 15_000) return;
+    sharedAsked[quizId] = Date.now();
+    let answers: string[] = [];
+    try {
+      const url = `${manager.endpoints.own}?quizGroupId=${encodeURIComponent(config.quizGroupId)}&quizId=${encodeURIComponent(quizId)}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+      if (!res.ok) return;
+      const body = (await res.json()) as { answers?: unknown };
+      answers = Array.isArray(body.answers) ? body.answers.filter((a): a is string => typeof a === "string" && isOwnAnswer(a)) : [];
+    } catch {
+      return;
+    }
+    for (const key of shuffled(answers)) {
+      const row = list.querySelector<HTMLElement>(`[data-answer="${CSS.escape(key)}"]`);
+      if (row && row.dataset.kind !== "own") continue;
+      const shared = thumbsItem(key, key.slice(1), "shared");
+      if (row) row.replaceWith(shared);
+      else list.append(shared);
+    }
+    renderThumbs(quizId);
   }
 
   /** Show each option's thumb and enable Submit when the thumbs differ from the vote. */
@@ -451,15 +482,14 @@ export function createParticipantUI(
     const section = sectionEls[quizId];
     if (!section) return;
     const marks = thumbsMarks[quizId] ?? {};
-    // Answers of one's own are rows with a thumbs up; take it away and the row goes.
+    // An answer just added is a row with a thumbs up; take it away and the row goes.
     const list = section.querySelector<HTMLElement>(`.${CLS.thumbsList}`);
     if (list) {
-      for (const item of list.querySelectorAll<HTMLElement>("[data-answer]")) {
-        const key = item.dataset.answer || "";
-        if (isOwnAnswer(key) && !(key in marks)) item.remove();
+      for (const item of list.querySelectorAll<HTMLElement>("[data-kind='own']")) {
+        if (!((item.dataset.answer ?? "") in marks)) item.remove();
       }
       for (const key of Object.keys(marks)) {
-        if (isOwnAnswer(key) && !list.querySelector(`[data-answer="${CSS.escape(key)}"]`)) list.append(thumbsItem(key, key.slice(1), true));
+        if (isOwnAnswer(key) && !list.querySelector(`[data-answer="${CSS.escape(key)}"]`)) list.append(thumbsItem(key, key.slice(1), "own"));
       }
     }
     for (const button of section.querySelectorAll<HTMLButtonElement>(`.${CLS.thumb}`)) {
@@ -479,7 +509,7 @@ export function createParticipantUI(
 
     const list = document.createElement("ul");
     list.className = CLS.thumbsList;
-    for (const opt of q.options) list.appendChild(thumbsItem(opt.label, opt.text, false));
+    for (const opt of q.options) list.appendChild(thumbsItem(opt.label, opt.text, "option"));
     section.appendChild(list);
 
     if (q.own) {
@@ -800,7 +830,9 @@ export function createParticipantUI(
       const addOwn = () => {
         const key = ownAnswer(ownInput?.value ?? "");
         const marks = thumbsMarks[q.quizId];
-        if (!key || Object.keys(marks).filter(isOwnAnswer).length >= OWN_MAX_PER) return;
+        // At most a few of one's own; agreeing with others' is not limited here.
+        const added = section.querySelectorAll(`.${CLS.thumbsList} [data-kind='own']`).length;
+        if (!key || (!(key in marks) && added >= OWN_MAX_PER)) return;
         marks[key] = 1;
         ownInput!.value = "";
         changed();
@@ -1039,6 +1071,8 @@ export function createParticipantUI(
     for (const [id, el] of Object.entries(sectionEls)) {
       if (id === quizId) {
         el.classList.remove(CLS.sectionHidden);
+        // What others added may have changed since the question was last shown.
+        if (el.dataset.quizType === "thumbs" && el.querySelector(".sq-participant__own")) void loadShared(id);
         // Update "Question X of Y" label
         const num = el.querySelector(".sq-participant__number");
         if (num) {

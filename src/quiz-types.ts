@@ -147,6 +147,8 @@ export const MultiAnswerSchema = v.pipe(
 export const OWN_PREFIX = "+";
 export const OWN_MAX_LENGTH = 60;
 export const OWN_MAX_PER = 3;
+/** Answers added by anyone that one respondent's thumbs up count for, on a thumbs question. */
+export const OWN_MAX_AGREED = 20;
 
 /** An answer of one's own as it travels and is counted, or null if empty. */
 export function ownAnswer(text: string): string | null {
@@ -308,6 +310,8 @@ export function audienceText(online: number, total: number): string {
 export const QuizEndpointsSchema = v.object({
   answer: v.string(),
   sync: v.string(),
+  /** Optional: lists the answers people added to a thumbs question, for others to vote on. */
+  own: v.optional(v.string()),
 });
 export type QuizEndpoints = v.InferOutput<typeof QuizEndpointsSchema>;
 
