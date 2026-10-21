@@ -4,6 +4,10 @@ All notable changes to `slide-quiz` and `slidev-addon-slide-quiz` are listed her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2-plane.18 (zouter fork)
+
+- Text questions with `own` take several answers per person, added to a list on the phone and each counted.
+
 ## 0.7.2-plane.17 (zouter fork)
 
 - A single-choice question shows its `hint` under the question, as text questions do.

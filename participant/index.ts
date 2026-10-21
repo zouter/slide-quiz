@@ -51,6 +51,10 @@ import {
   OWN_HINT,
   OWN_MAX_LENGTH,
   OWN_MAX_PER,
+  TextsAnswerSchema,
+  encodeTextsAnswer,
+  TEXT_MAX_PER,
+  TEXT_MAX_LENGTH,
 } from "../src/quiz-types";
 import type { ParticipantConfig } from "../src/quiz-types";
 import { CLS } from "./selectors";
@@ -449,6 +453,43 @@ export function createParticipantUI(
     return item;
   }
 
+  // Text questions that take several answers: the texts on screen, per quiz.
+  const textLists: Record<string, string[]> = {};
+
+  function decodeTexts(answer: string | null): string[] {
+    if (!answer) return [];
+    try {
+      const parsed = v.safeParse(TextsAnswerSchema, JSON.parse(answer));
+      return parsed.success ? parsed.output : [answer];
+    } catch {
+      return [answer];
+    }
+  }
+
+  /** The texts added so far, each with a button to take it away; Submit when they differ from what was sent. */
+  function renderTexts(quizId: string) {
+    const section = sectionEls[quizId];
+    const list = section?.querySelector<HTMLElement>(".sq-participant__texts");
+    if (!section || !list) return;
+    const texts = textLists[quizId] ?? [];
+    list.replaceChildren(...texts.map((text, i) => {
+      const item = document.createElement("li");
+      const span = document.createElement("span");
+      span.textContent = text;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "sq-participant__text-remove";
+      remove.dataset.index = String(i);
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", `Remove ${text}`);
+      item.append(span, remove);
+      return item;
+    }));
+    const voted = manager.getVotedAnswer(quizId);
+    const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`);
+    if (submitBtn) submitBtn.disabled = encodeTextsAnswer(texts) === voted || (!texts.length && !voted);
+  }
+
   // When the own endpoint was last asked, per quiz.
   const sharedAsked: Record<string, number> = {};
 
@@ -685,6 +726,28 @@ export function createParticipantUI(
         renderRankInput(q, section);
       } else if (q.type === "thumbs") {
         renderThumbsInput(q, section);
+      } else if (isText && q.own) {
+        // Several answers: each added to a list, all sent together.
+        section.dataset.texts = "1";
+        const list = document.createElement("ul");
+        list.className = "sq-participant__texts";
+        const inputWrapper = document.createElement("div");
+        inputWrapper.className = "sq-participant__input-wrapper sq-participant__own";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.maxLength = TEXT_MAX_LENGTH;
+        input.className = CLS.input;
+        input.placeholder = "Type something...";
+        const add = document.createElement("button");
+        add.type = "button";
+        add.className = "sq-participant__add";
+        add.textContent = "Add";
+        inputWrapper.append(input, add);
+        const submitBtn = document.createElement("button");
+        submitBtn.type = "button";
+        submitBtn.className = CLS.submit;
+        submitBtn.textContent = "Submit";
+        section.append(list, inputWrapper, submitBtn);
       } else if (isText) {
         const inputWrapper = document.createElement("div");
         inputWrapper.className = "sq-participant__input-wrapper";
@@ -981,6 +1044,49 @@ export function createParticipantUI(
         else showSendError(section, q.quizId);
         renderMultiSelection(q.quizId);
       });
+    } else if (section.dataset.texts) {
+      const input = section.querySelector<HTMLInputElement>(`.${CLS.input}`)!;
+      const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`)!;
+      textLists[q.quizId] ??= decodeTexts(manager.getVotedAnswer(q.quizId));
+      renderTexts(q.quizId);
+
+      const changed = () => {
+        renderTexts(q.quizId);
+        const voted = manager.getVotedAnswer(q.quizId);
+        if (encodeTextsAnswer(textLists[q.quizId]) === voted) showSubmitted(section, `${textLists[q.quizId].length} sent`);
+        else showStatus(section, voted || textLists[q.quizId].length ? "Not sent yet. Tap Submit to send them." : "");
+      };
+      const add = () => {
+        const text = input.value.replace(/\s+/g, " ").trim();
+        const texts = textLists[q.quizId];
+        if (!text || texts.includes(text) || texts.length >= TEXT_MAX_PER) return;
+        texts.push(text);
+        input.value = "";
+        changed();
+      };
+      section.querySelector(".sq-participant__add")!.addEventListener("click", add);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") add();
+      });
+      section.querySelector(".sq-participant__texts")!.addEventListener("click", (event) => {
+        const remove = (event.target as Element).closest<HTMLButtonElement>(".sq-participant__text-remove");
+        if (!remove) return;
+        textLists[q.quizId].splice(Number(remove.dataset.index), 1);
+        changed();
+      });
+
+      // Submit takes along what is still typed in the field.
+      submitBtn.addEventListener("click", async () => {
+        add();
+        const answer = encodeTextsAnswer(textLists[q.quizId]);
+        if (answer === manager.getVotedAnswer(q.quizId)) return;
+        submitBtn.disabled = true;
+        showStatus(section, "Sending...");
+        const ok = await manager.submitAnswer(q.quizId, answer);
+        if (ok) showSubmitted(section, `${textLists[q.quizId].length} sent`);
+        else showSendError(section, q.quizId);
+        renderTexts(q.quizId);
+      });
     } else if (section.dataset.quizType === "text") {
       const input = section.querySelector<HTMLInputElement>(`.${CLS.input}`)!;
       const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`)!;
@@ -1129,6 +1235,13 @@ export function createParticipantUI(
       return;
     }
 
+    if (section.dataset.texts) {
+      textLists[quizId] = decodeTexts(answer);
+      renderTexts(quizId);
+      showSubmitted(section, `${textLists[quizId].length} sent`);
+      return;
+    }
+
     if (section.dataset.quizType === "multi") {
       const labels = decodeMulti(answer);
       multiSelections[quizId] = new Set(labels);
@@ -1189,6 +1302,9 @@ export function createParticipantUI(
       multiSelections[quizId] = new Set();
       for (const b of section.querySelectorAll<HTMLButtonElement>(`.${CLS.btn}`)) b.disabled = false;
       renderMultiSelection(quizId);
+    } else if (section.dataset.texts) {
+      textLists[quizId] = [];
+      renderTexts(quizId);
     } else if (section.dataset.quizType === "text") {
       const input = section.querySelector<HTMLInputElement>(`.${CLS.input}`);
       const submitBtn = section.querySelector<HTMLButtonElement>(`.${CLS.submit}`);

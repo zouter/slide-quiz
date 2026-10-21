@@ -163,6 +163,18 @@ export function isOwnAnswer(key: string): boolean {
 /** Shown on the audience page for multi-select questions that allow answers of one's own. */
 export const OWN_HINT = "Add your own";
 
+/**
+ * A text question with `own` takes several answers from one person: they go
+ * as a JSON list of texts, each counted, at most TEXT_MAX_PER.
+ */
+export const TEXT_MAX_PER = 10;
+export const TEXT_MAX_LENGTH = 100;
+export const TextsAnswerSchema = v.array(v.string());
+
+export function encodeTextsAnswer(texts: string[]): string {
+  return JSON.stringify(texts);
+}
+
 /** Encode selected option labels as a multi-select answer string. */
 export function encodeMultiAnswer(labels: string[]): string {
   return JSON.stringify([...new Set(labels)].sort());

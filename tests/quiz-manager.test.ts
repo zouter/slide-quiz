@@ -766,6 +766,17 @@ describe("QuizManager — Presenter mode", () => {
     });
   });
 
+  describe("text questions that take several answers", () => {
+    it("counts each of one person's texts once, tidied", () => {
+      const mgr = createPresenter();
+      mgr.setQuestions([{ quizId: "m", question: "?", type: "text", own: true, options: [] }]);
+      resultsMessageHandler({ quizId: "m", answer: '["Thanks for the  coffee", "thanks for the coffee", "More outings"]', sessionId: "v1" });
+      resultsMessageHandler({ quizId: "m", answer: "More outings", sessionId: "v2" });
+
+      expect(mgr.getQuizState("m")).toEqual({ votes: { "thanks for the coffee": 1, "more outings": 2 }, total: 2 });
+    });
+  });
+
   describe("answers that arrive before their question", () => {
     it("recounts a text answer once the question is known", () => {
       const mgr = createPresenter();

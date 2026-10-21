@@ -47,6 +47,9 @@ import {
   isOwnAnswer,
   OWN_MAX_PER,
   OWN_MAX_AGREED,
+  TextsAnswerSchema,
+  TEXT_MAX_PER,
+  TEXT_MAX_LENGTH,
   resultsStream,
   syncStream,
 } from "./quiz-types";
@@ -640,8 +643,13 @@ export class PresenterQuizManager extends QuizManager {
   private answerKeys(quizId: string, answer: string): string[] | null {
     const question = this.getQuestion(quizId);
     switch (question?.type ?? "choice") {
-      case "text":
-        return [answer.trim().toLowerCase()];
+      case "text": {
+        // Several answers where the question takes them, each counted once.
+        const parsed = question?.own ? v.safeParse(TextsAnswerSchema, parseJson(answer)) : null;
+        if (!parsed?.success) return [answer.trim().toLowerCase()];
+        const texts = parsed.output.map((text) => text.replace(/\s+/g, " ").trim().toLowerCase().slice(0, TEXT_MAX_LENGTH)).filter(Boolean);
+        return [...new Set(texts)].slice(0, TEXT_MAX_PER);
+      }
       case "rank": {
         // Every option exactly once; position i of n earns n - 1 - i points,
         // counted as that many keys, so the vote map holds points per option.
@@ -1225,6 +1233,15 @@ export class ParticipantQuizManager extends QuizManager {
     delete current[quizId];
     this.store.submitted.set(current);
     this.saveSubmitted();
+  }
+}
+
+/** An answer's JSON, or null where it is plain text. */
+function parseJson(answer: string): unknown {
+  try {
+    return JSON.parse(answer);
+  } catch {
+    return null;
   }
 }
 

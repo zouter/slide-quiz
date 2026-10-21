@@ -454,6 +454,45 @@
   background: color-mix(in srgb, var(--sq-p-text) 8%, transparent);
 }
 
+/* Several answers to a text question: one per line, each to take away. */
+.sq-participant__texts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  list-style: none;
+}
+
+.sq-participant__texts li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  border: 1px solid var(--sq-p-btn-border);
+  border-radius: var(--sq-p-border-radius);
+  background: var(--sq-p-btn-bg);
+  color: var(--sq-p-text);
+  font-family: var(--sq-p-font);
+}
+
+.sq-participant__texts li span {
+  flex: 1;
+}
+
+.sq-participant__text-remove {
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: none;
+  border: 1px solid var(--sq-p-btn-border);
+  border-radius: calc(var(--sq-p-border-radius) * 0.7);
+  background: transparent;
+  color: var(--sq-p-text);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
 /* ── Survey and live tabs ── */
 
 .sq-participant__tabs {

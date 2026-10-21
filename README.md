@@ -346,6 +346,10 @@ A question is answerable while its question or results slide is shown. Mark any 
 
 Add `data-quiz-own` to a multi-select question to let people add up to three answers of their own on their phones, beside the options. The results show them as chips with their count under the bars, tidied up (one spacing, lower case, at most 60 characters).
 
+#### Several text answers (this fork)
+
+Add `data-quiz-own` to a text question to let people add several answers, up to ten: each is added to a list on the phone, can be taken away again, and all go together as one JSON list. Each counts once in the results.
+
 #### Named voters (this fork)
 
 List `voters` in the config (`{ sessionId, name, photo }`) to show some people's answers by portrait, for instance the speakers'; they also count, once per voter, as respondents without an audience group. Their phones open the audience page with that session id: pass it as `sessionId` to `createParticipantUI`, for instance from a link parameter. An audience-group option whose label is a named voter's session id lets them pick themselves instead: whoever picks it answers as that voter, also for what they answered before, and the option stays out of the legend and the split. Results bars show the portrait beside each option they picked (with the place they gave, on rank questions, or their thumb, on thumbs questions); a plane shows it at their point.
